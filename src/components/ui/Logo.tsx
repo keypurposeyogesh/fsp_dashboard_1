@@ -31,7 +31,7 @@ export const Logo: React.FC<LogoProps> = ({
   showText = true,
   showBrandText = true,
 }) => {
-  // Size configurations
+  // Size configurations. `icon` is the rendered width.
   const sizeConfig = {
     sm: { icon: 28, text: "text-xs", gap: "gap-1.5" },
     md: { icon: 36, text: "text-sm", gap: "gap-2" },
@@ -40,6 +40,11 @@ export const Logo: React.FC<LogoProps> = ({
   };
 
   const config = sizeConfig[size];
+  /* public/fsp-logo.png is 1285x852, not square. Declaring a square box made
+     next/image warn, because Tailwind's preflight (img { height: auto })
+     overrode the height while the width stayed fixed - so the browser was
+     already drawing it at its natural ratio. Declare that ratio instead. */
+  const iconHeight = Math.round(config.icon / (1285 / 852));
 
   const brandText = (
     <div className="flex flex-col items-start leading-tight">
@@ -59,7 +64,7 @@ export const Logo: React.FC<LogoProps> = ({
       src="/fsp-logo.png"
       alt={alt}
       width={config.icon}
-      height={config.icon}
+      height={iconHeight}
       className="object-contain"
       priority
       unoptimized
