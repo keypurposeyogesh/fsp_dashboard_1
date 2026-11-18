@@ -722,20 +722,6 @@
 .notice p { margin: 8px 0; color: var(--muted); }
 .notice button { text-decoration: underline; color: var(--brand-navy); cursor: pointer; }
 
-.intro {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  border: 1px solid var(--brand-gold-border);
-  background: var(--brand-gold-light);
-  border-radius: 14px;
-  padding: 20px;
-}
-
-.intro > svg { flex-shrink: 0; color: var(--brand-gold-ink); }
-.intro strong { font-size: 15px; }
-.intro p { font-size: 12px; line-height: 1.7; color: var(--muted); margin-top: 6px; }
-
 /* ============ responsive ============ */
 
 @media (max-width: 900px) {

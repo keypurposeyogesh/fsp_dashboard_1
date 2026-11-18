@@ -37,13 +37,86 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
 
   if (loading && !data) return <p role="status" className={styles.notice}>Loading your challenge calendar and points...</p>;
 
-  if (!data?.length) return <div className={styles.intro}>
-    <CalendarDays />
-    <div>
-      <strong>30 tasks. 40 days. Up to 3,000 points.</strong>
-      <p>Your calendar starts when your challenge enrollment is approved. Every saved task earns 100 points; missed days never reset progress.</p>
-    </div>
-  </div>;
+  /* No challenge row yet. The RPC succeeded and returned nothing, so zeroes are
+     honest here - show the whole game in its locked state rather than one card,
+     so a member can see what they are working towards. Badges are profile-driven
+     and already real. */
+  if (!data?.length) {
+    const growth = growthProgress(profilePercent, []);
+    return <div className={styles.group}>
+      <section className={styles.quest} aria-label="Your challenge status">
+        <div className={styles.questTop}>
+          <span className={styles.levelPill}><Sparkles size={13} />Level {growth.level}</span>
+          <span className={styles.window}>Not started</span>
+        </div>
+        <div className={styles.questBody}>
+          <div className={styles.questCopy}>
+            <p className={styles.kicker}>YOUR QUEST AWAITS</p>
+            <h2>30 tasks. 40 days.</h2>
+            <p className={styles.questNote}>Your calendar starts when your challenge enrollment is approved. Every saved task earns 100 points; missed days never reset progress.</p>
+            <div className={styles.xpRow}>
+              <span><strong>{growth.xp.toLocaleString()}</strong> XP</span>
+              <span>{growth.nextXP} XP to level {growth.level + 1}</span>
+            </div>
+            <div
+              className={styles.xpBar}
+              role="progressbar"
+              aria-label={`Level ${growth.level} progress`}
+              aria-valuemin={0}
+              aria-valuemax={250}
+              aria-valuenow={growth.levelXP}
+            ><span style={{ width: `${Math.round(growth.levelXP / 250 * 100)}%` }} /></div>
+            <a href="#my-learning" className={styles.goldCta}>See your programs<ArrowRight size={15} /></a>
+          </div>
+          <div className={styles.prize} aria-label="3,000 point completion reward">
+            <span className={styles.trophy}><Trophy size={38} strokeWidth={1.5} /><Sparkles size={14} /></span>
+            <strong>3,000</strong>
+            <span>POINT REWARD</span>
+          </div>
+        </div>
+      </section>
+
+      <div className={styles.tiles}>
+        <div><span className={styles.tileIcon}><Check size={17} /></span><strong>0<small>/30</small></strong><span>Tasks done</span></div>
+        <div><span className={styles.tileIcon}><Coins size={17} /></span><strong>0</strong><span>Points earned</span></div>
+        <div><span className={styles.tileIcon}><Trophy size={17} /></span><strong>0</strong><span>Redeemable now</span></div>
+        <div><span className={styles.tileIcon}><Flame size={17} /></span><strong>0</strong><span>Day streak</span></div>
+      </div>
+
+      <section className={styles.badgeCard} aria-label="Your badges">
+        <h3><Award size={15} />Badges<span>{growth.badges.filter(b => b.earned).length} of {growth.badges.length} earned</span></h3>
+        <div className={styles.badges}>
+          {growth.badges.map(badge => {
+            const Icon = BADGE_ICON[badge.icon] ?? Award;
+            return <div key={badge.name} className={badge.earned ? styles.badgeEarned : styles.badgeLocked}>
+              <span className={styles.badgeMedal}>
+                <Icon size={22} />
+                {!badge.earned && <span className={styles.badgeLock}><LockKeyhole size={9} /></span>}
+              </span>
+              <strong>{badge.name}</strong>
+              <small>{badge.earned ? 'Earned' : badge.description}</small>
+            </div>;
+          })}
+        </div>
+      </section>
+
+      <section className={styles.milestoneCard} aria-label="Challenge milestones">
+        <h3><Target size={15} />Milestones</h3>
+        <div className={styles.milestones}>
+          {MILESTONES.map(({ at, label, Icon }) => <div key={at} className={styles.locked} title={`${label}: ${at} completed ${at === 1 ? 'task' : 'tasks'}`}>
+            <span className={styles.medal}><Icon size={21} /><span><LockKeyhole size={9} /></span></span>
+            <strong>{label}</strong>
+            <small>{at} {at === 1 ? 'task' : 'tasks'}</small>
+          </div>)}
+        </div>
+      </section>
+
+      <p className={styles.footnote}>
+        <ShieldCheck size={15} />
+        <span>Discount points unlock after all 30 tasks are completed. An FSP admin applies your discount manually.</span>
+      </p>
+    </div>;
+  }
 
   return <div className={styles.rewards}>{data.map(reward => {
     const days = challengeCalendar(reward);
