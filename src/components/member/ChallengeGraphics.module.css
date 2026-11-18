@@ -10,7 +10,7 @@
 
 .ringWrap {
   position: relative;
-  width: clamp(148px, 42vw, 196px);
+  width: clamp(126px, 34vw, 196px);
   aspect-ratio: 1;
   flex: none;
   display: grid;
@@ -253,6 +253,10 @@
 }
 
 @media (max-width: 560px) {
+  /* Wrapped below the copy, so it is a closing flourish, not the hero. */
+  .ringWrap { width: 128px; }
+  .ringCore strong { font-size: 2.3rem; }
+
   .markDone,
   .markTodo {
     width: 4.4rem;

@@ -639,7 +639,9 @@
 
 @media (max-width: 650px) {
   .quest { padding: 18px 17px 15px; }
-  .questBody { gap: 12px; }
+  /* Once the figure wraps under the copy, centre it and give it air. */
+  .questBody { gap: 16px; justify-content: center; }
+  .questFigure { flex-direction: row; gap: 14px; margin-inline: auto; }
   .questCopy h2 { font-size: 21px; }
   .badges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .badgeMedal { width: 48px; height: 48px; }
