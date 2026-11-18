@@ -6,7 +6,6 @@ import { useAsync } from '@/lib/useAsync';
 import { getMyProfile } from '@/lib/data/member';
 import { profileCompletion } from '@/lib/profile';
 import { DailyCourseProgress } from './DailyCourseProgress';
-import { ChallengeCommunity } from './ChallengeCommunity';
 import { ChallengeRewards } from './ChallengeRewards';
 import { TodaysUpdates } from './TodaysUpdates';
 import { CoursesView } from '@/components/pages/CoursesView';
@@ -67,7 +66,6 @@ export function UnifiedDashboard() {
 
       <aside className={styles.frontUpdates} aria-label="Latest FSP updates">
         <TodaysUpdates limit={3} />
-        {account.data && <ChallengeCommunity compact />}
       </aside>
     </div>
   </div>;
