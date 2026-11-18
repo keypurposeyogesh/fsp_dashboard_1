@@ -42,7 +42,7 @@ export function UnifiedDashboard() {
     <div className={styles.frontGrid}>
       <div className={styles.frontMain}>
         {/* Status first: orient, then act. */}
-        {account.data && <ChallengeRewards key={user?.id} profilePercent={profilePercent} />}
+        {account.data && <ChallengeRewards key={user?.id} profilePercent={profilePercent} memberId={memberId} />}
 
         <section id="my-learning" className={styles.learning}>
           <div className={styles.sectionHeading}>

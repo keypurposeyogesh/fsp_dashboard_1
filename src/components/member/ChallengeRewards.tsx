@@ -4,7 +4,7 @@ import { CalendarDays, Check, Coins, ShieldCheck, Trophy, Flag, Sprout, Rocket, 
 import type { LucideIcon } from 'lucide-react';
 import { useAsync } from '@/lib/useAsync';
 import { useEnrollmentRefresh } from '@/lib/enrollment-refresh';
-import { getChallengeRewards } from '@/lib/data/challenge-rewards';
+import { getMyChallengeRewards } from '@/lib/data/challenge-rewards';
 import { challengeCalendar, challengeStreak } from '@/lib/challenge-calendar';
 import { growthProgress } from '@/lib/gamification';
 import { TaskRing, JourneyTrail, CountUp } from './ChallengeGraphics';
@@ -22,8 +22,9 @@ const MILESTONES = [
 /** growthProgress() names its badge icons; map them to the real components. */
 const BADGE_ICON: Record<string, LucideIcon> = { sprout: Sprout, user: User, award: Award, flame: Flame };
 
-export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: number }) {
-  const { data, error, loading, reload } = useAsync(getChallengeRewards);
+export function ChallengeRewards({ profilePercent = 0, memberId }: { profilePercent?: number; memberId?: string }) {
+  /* Scoped to this member: an admin would otherwise get every active challenge. */
+  const { data, error, loading, reload } = useAsync(() => getMyChallengeRewards(memberId), [memberId]);
   useEnrollmentRefresh(reload);
   useEffect(() => {
     window.addEventListener('fsp-learning-changed', reload);
