@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/.test-tools/
 
 # next.js
 /.next/
@@ -42,6 +43,10 @@ next-env.d.ts
 
 # local dev server log
 dev_server.log
+
+# captured build and dev output
+build_output*.txt
+dev_output.txt
 
 # Share configuration names without local credentials
 !.env.example
