@@ -66,14 +66,6 @@ export interface SubmissionRow {
   members?: Omit<MemberSummary, "id"> | null;
 }
 
-export interface CertificateRow {
-  id: string;
-  issued_at: string;
-  certificate_url: string;
-  members?: Omit<MemberSummary, "id"> | null;
-  courses?: { title: string } | null;
-}
-
 export interface ResourceRow {
   id: string;
   title: string;

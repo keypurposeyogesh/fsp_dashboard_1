@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "FSP Member Hub", template: "%s | FSP Member Hub" },
   description:
-    "Official Member Hub Dashboard for the Facilitator Support Program. Access your membership details, tasks, live events, certificates, community, and support.",
+    "Official Member Hub Dashboard for the Facilitator Support Program. Access your membership details, tasks, live events, community, and support.",
 };
 
 export default function RootLayout({

@@ -122,8 +122,6 @@ export default function AdminMemberLogs() {
     "EVENT_CANCEL",
     "PAYMENT_VIEW",
     "PAYMENT_RENEWAL_REQUEST",
-    "CERTIFICATE_VIEW",
-    "CERTIFICATE_DOWNLOAD",
     "RESOURCE_VIEW",
     "RESOURCE_DOWNLOAD",
     "NOTIFICATION_VIEW",

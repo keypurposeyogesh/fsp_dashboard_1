@@ -33,7 +33,7 @@ Any signed-in, active account can use these routes.
 | `/documents` | Required documents: upload, re-upload, view (signed URLs) |
 | `/notifications` | Tabs (All / Unread / Membership / Application / Documents / System), mark read |
 | `/settings` | Account, security (password for email accounts), session |
-| `/courses`, `/tasks`, `/events`, `/payments`, `/certificates`, `/community`, `/resources` | Existing program features, shown under "Programs" in the sidebar |
+| `/courses`, `/tasks`, `/events`, `/payments`, `/community`, `/resources` | Existing program features, shown under "Programs" in the sidebar |
 | `/membership/register` | Redirects to `/application` |
 
 ## Admin area: `src/app/admin/`
