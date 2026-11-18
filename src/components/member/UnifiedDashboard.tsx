@@ -9,17 +9,8 @@ import { DailyCourseProgress } from './DailyCourseProgress';
 import { ChallengeCommunity } from './ChallengeCommunity';
 import { ChallengeRewards } from './ChallengeRewards';
 import { TodaysUpdates } from './TodaysUpdates';
-import { MemberAvatar } from './MemberAvatar';
 import { CoursesView } from '@/components/pages/CoursesView';
 import styles from './Overview.module.css';
-
-/* India time, to match the challenge calendar. Safe against hydration drift:
-   the name only appears once the profile has loaded on the client, so the
-   server never renders a greeting that the client could disagree with. */
-function greeting() {
-  const hour = Number(new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date()));
-  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-}
 
 export function UnifiedDashboard() {
   const { user } = useAuth();
@@ -37,29 +28,10 @@ export function UnifiedDashboard() {
     {/* One eyebrow for the whole view. The challenge card carries the day counter,
         not a second title. */}
     <header className={styles.heading}>
-      <div className={styles.headingMain}>
-        {account.data && (
-          /* The ring is the profile score we already compute for the XP bonus
-             and the "All About You" badge - a nudge, not an ornament. */
-          <Link
-            href="/profile/edit"
-            className={styles.avatarRing}
-            style={{ ['--p' as string]: `${profilePercent}%` } as React.CSSProperties}
-            aria-label={`Your profile is ${profilePercent}% complete. Edit your profile.`}
-          >
-            <MemberAvatar
-              src={account.data.avatar_url}
-              name={`${account.data.first_name ?? ''} ${account.data.last_name ?? ''}`.trim() || 'Member'}
-              size={54}
-            />
-            <small aria-hidden="true">{profilePercent}%</small>
-          </Link>
-        )}
-        <div>
-          <p className={styles.eyebrow}><span aria-hidden="true" />FSP 30-TASK CHALLENGE</p>
-          <h1>{account.data?.first_name ? <>{greeting()}, {account.data.first_name}<span>.</span></> : <>Small steps. Lasting progress<span>.</span></>}</h1>
-          <p className={styles.sub}>30 tasks, 40 days, up to 3,000 discount points — at your pace.</p>
-        </div>
+      <div>
+        <p className={styles.eyebrow}>FSP 30-TASK CHALLENGE</p>
+        <h1>{account.data?.first_name ? <>Welcome back, {account.data.first_name}<span>.</span></> : <>Small steps. Lasting progress<span>.</span></>}</h1>
+        <p className={styles.sub}>30 tasks across a 40-day window, worth up to 3,000 discount points. Keep going at your pace.</p>
       </div>
       <button type="button" onClick={refresh} className={styles.refresh} aria-label="Refresh challenge" disabled={account.loading} data-action="refresh">
         <RefreshCw size={17} /><span>Refresh</span>
