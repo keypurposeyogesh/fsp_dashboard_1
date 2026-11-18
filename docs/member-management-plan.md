@@ -5,7 +5,7 @@
 
 - **Phase 1 code: done.** `tsc` passes, and lint went from 214 errors to 209 with none new.
 - **SQL files written:** `000_diagnostics`, `001_security_hotfix`, `002_user_sync`. **None of them has been executed yet.** They need a database: the local Postgres or the Supabase SQL editor.
-- **Not written yet:** 003_data_repair. It waits for the M0 diagnostics output.
+- **Written 2026-11-18:** `003_data_repair.sql`, with `003_data_repair.PREVIEW.sql` to inspect first. It re-keys drifted ids and backfills; duplicate members are reported, not merged.
 - **Part 2 (multi-page dashboard): implemented.** `tsc` passes, `next build` passes (54 routes), and the proxy redirects were checked against a running server. **Still untested:** the pages as a signed-in user. The Supabase project URL in `.env.local` doesn't resolve, and migrations 004 and 005 haven't been applied.
 **Inputs:** a full inspection of the repository, plus [database/20260909_fix_google_oauth_member_sync.ANALYSIS.md](../database/20260909_fix_google_oauth_member_sync.ANALYSIS.md).
 
