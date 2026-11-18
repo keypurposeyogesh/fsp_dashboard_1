@@ -53,8 +53,8 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
       </Link>
       <GlobalSearch />
       <div className="ml-auto flex items-center gap-1 sm:gap-2">
-        {user && <NotificationBell key={user.id} />}
-        <UserMenu key={user?.id ?? 'anonymous'} />
+        {user && <NotificationBell key={`bell-${user.id}`} />}
+        <UserMenu key={`menu-${user?.id ?? "anonymous"}`} />
       </div>
     </header>
   );
