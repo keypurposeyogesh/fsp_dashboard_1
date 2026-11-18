@@ -1,0 +1,42 @@
+name: Live release checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: live-release-checks
+  cancel-in-progress: false
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    env:
+      E2E_BASE_URL: ${{ vars.E2E_BASE_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      E2E_MEMBER_A_EMAIL: ${{ secrets.E2E_MEMBER_A_EMAIL }}
+      E2E_MEMBER_A_PASSWORD: ${{ secrets.E2E_MEMBER_A_PASSWORD }}
+      E2E_MEMBER_B_EMAIL: ${{ secrets.E2E_MEMBER_B_EMAIL }}
+      E2E_MEMBER_B_PASSWORD: ${{ secrets.E2E_MEMBER_B_PASSWORD }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_SUPER_ADMIN_EMAIL: ${{ secrets.E2E_SUPER_ADMIN_EMAIL }}
+      E2E_SUPER_ADMIN_PASSWORD: ${{ secrets.E2E_SUPER_ADMIN_PASSWORD }}
+      E2E_ALLOW_WRITES: '1'
+      E2E_ACTIVE_ENROLLMENT_ID: ${{ vars.E2E_ACTIVE_ENROLLMENT_ID }}
+      E2E_PENDING_ENROLLMENT_ID: ${{ vars.E2E_PENDING_ENROLLMENT_ID }}
+      E2E_ISOLATION_ENROLLMENT_ID: ${{ vars.E2E_ISOLATION_ENROLLMENT_ID }}
+      E2E_SIGNUP_EMAIL: ${{ secrets.E2E_SIGNUP_EMAIL }}
+      E2E_SIGNUP_PASSWORD: ${{ secrets.E2E_SIGNUP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Require the staging URL
+        run: node -e "if(!process.env.E2E_BASE_URL)throw Error('Configure staging E2E_BASE_URL before running live checks')"
+      - run: npm run test:e2e:live

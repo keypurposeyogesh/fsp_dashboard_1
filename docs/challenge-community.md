@@ -29,4 +29,4 @@ node --test tests/task-completion-form.cjs tests/challenge-front.cjs
 node --test tests/challenge-reflections-sql.cjs
 ```
 
-SQL tests use the optional local PGlite test engine described in `docs/challenge-rewards.md`. They do not connect to live Supabase. They verify reflection validation, atomic completion, old-RPC bypass prevention, task order, duplicate handling, private/public visibility, author/admin moderation, pagination, active-account access, and safe migration reruns.
+SQL tests use the project PGlite test dependency described in `docs/challenge-rewards.md`. They do not connect to live Supabase. They verify reflection validation, atomic completion, old-RPC bypass prevention, task order, duplicate handling, private/public visibility, author/admin moderation, pagination, active-account access, and safe migration reruns.

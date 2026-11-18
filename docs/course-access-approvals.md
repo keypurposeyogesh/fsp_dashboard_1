@@ -20,4 +20,4 @@ Existing active course enrollments stay active. Existing pending-payment and pay
 node --test tests/course-access-ui.cjs tests/course-access-sql.cjs
 ```
 
-SQL tests use the optional isolated PGlite engine described in `docs/challenge-rewards.md`. They cover paid and free courses, duplicate requests, admin-only review, denial and resubmission, legacy-client bypass prevention, preserved historical data, and unchanged free-program registration.
+SQL tests use the project PGlite test dependency described in `docs/challenge-rewards.md`. They cover paid and free courses, duplicate requests, admin-only review, denial and resubmission, legacy-client bypass prevention, preserved historical data, and unchanged free-program registration.

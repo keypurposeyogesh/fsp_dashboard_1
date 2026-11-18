@@ -35,8 +35,8 @@ node --test tests/challenge-calendar.cjs tests/challenge-front.cjs tests/admin-t
 Isolated PostgreSQL integration tests (no Supabase account or remote data):
 
 ```powershell
-npm.cmd install --prefix .test-tools --no-save --no-package-lock --no-audit --no-fund @electric-sql/pglite
+npm ci
 node --test tests/challenge-rewards-sql.cjs
 ```
 
-The SQL integration test reports skipped if the optional local test engine has not been installed. It executes migrations 016 and 022 against an isolated database, tests server reward calculation at the exact deadline, enforces permissions and duplicate completion handling, and verifies redemption idempotency and overdraft rejection.
+PGlite is a required development dependency installed by npm ci; a missing engine fails the test run instead of silently skipping it. It executes migrations 016 and 022 against an isolated database, tests server reward calculation at the exact deadline, enforces permissions and duplicate completion handling, and verifies redemption idempotency and overdraft rejection.

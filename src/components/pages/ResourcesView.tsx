@@ -59,7 +59,7 @@ export const ResourcesView: React.FC = () => {
             Download handbooks, framework PDFs, and reference toolkits to support your facilitation coursework.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchResources} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
+        <Button variant="outline" size="sm" disabled={loading} onClick={fetchResources} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
           Refresh
         </Button>
       </div>
@@ -67,7 +67,7 @@ export const ResourcesView: React.FC = () => {
       {loadError && <div role="alert" className="mb-4 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-light)] p-4 text-sm font-medium">{loadError}</div>}
       {loading ? (
         <div className="py-12 text-center text-[var(--muted)] font-medium">Loading library documents...</div>
-      ) : resources.length === 0 ? (
+      ) : loadError ? null : resources.length === 0 ? (
         <div className="py-12 text-center text-[var(--muted)] border border-dashed rounded-3xl bg-[var(--card-bg)]">
           No training guides or PDFs available yet.
         </div>

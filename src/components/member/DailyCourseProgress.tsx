@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, BookOpen } from "lucide-react";
+import { ArrowUpRight, BookOpen, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import styles from "./LearningList.module.css";
 import { createClient } from "@/lib/supabase/client";
@@ -61,18 +61,18 @@ export function DailyCourseProgress({ memberId, compact = false }: { memberId: s
   }
   return <div className={compact ? styles.list : "space-y-4 border-t border-[var(--card-border)] pt-4"}>{!compact && <div className="flex items-center justify-between gap-3"><h3 className="font-bold">My Enrolled Courses</h3><Button variant="ghost" size="sm" disabled={loading || busy || !memberId} onClick={reload} data-action="refresh">Refresh</Button></div>}
     {compact && !memberId && <p className={styles.empty}>Your courses will appear here when your profile is ready.</p>}
-    {loading && !data && <p role="status" className="text-sm">Loading your courses…</p>}{error && <p role="alert" className="text-sm text-[var(--danger)]">{error.kind==="unavailable" ? "Daily tasks need database setup. Please contact the FSP administrator." : error.message}</p>}{actionError && <p role="alert" className="text-sm text-[var(--danger)]">{actionError}</p>}{message && <p role="status" className="text-sm text-[var(--success)]">{message}</p>}
+    {loading && !data && <p role="status" className="text-sm">Loading your courses…</p>}{error && <p role="alert" className="text-sm text-[var(--danger)]">{error.kind==="unavailable" ? "Daily tasks need database setup. Please contact the FSP administrator." : error.message}</p>}{actionError && <p role="alert" className="text-sm text-[var(--danger)]">{actionError}</p>}{message && <p role="status" className={compact ? styles.savedNotice : "text-sm text-[var(--success)]"}><CheckCircle2 size={17} aria-hidden="true"/><span>{message}</span></p>}
     {data?.enrollments.length===0 && (compact ? <div className={styles.empty}><BookOpen size={22}/><div><strong>A new chapter is waiting</strong><p>Choose a course and start building your skills.</p></div><Link href="/courses">Find a course <ArrowUpRight size={16}/></Link></div> : <p className="text-sm text-[var(--muted)]">Your enrolled courses and daily tasks will appear here.</p>)}
     {data?.enrollments.map(row=>{
       const tasks=data.tasks.filter(task=>task.offering_id===row.offering_id);
       const completed=new Set(data.completions.filter(record=>record.enrollment_id===row.id).map(record=>record.task_id));
       const count=tasks.filter(task=>completed.has(task.id)).length;
       const next = tasks.find(task=>!completed.has(task.id));
-      if (compact) return <article key={row.id} className={styles.featured}>
+      if (compact) return <article key={row.id} data-enrollment-id={row.id} className={styles.featured}>
         {row.offerings.flyer_path && <div className={styles.poster}><ProgramFlyer path={row.offerings.flyer_path} title={row.offerings.title}/></div>}
         <div className={styles.featureBody}>
           <div className={styles.featureHeading}><span className={styles.icon}><BookOpen size={23}/></span><div className={styles.copy}><strong>{row.offerings.title}</strong><span>{row.status === "active" ? "Your access is approved. Your challenge is active." : row.status === "access_denied" ? "Access declined. View your request for details." : "Waiting for administrator approval."}</span></div><div className={styles.headingActions}><Badge variant={row.status === "active" ? "success" : "warning"}>{courseAccessLabel(row.status)}</Badge>{row.status === "active" && next && row.offerings.code === "FSP-30DC" && <Button type="button" size="sm" disabled={busy || loading} onClick={()=>{setMessage("");setActionError("");setSelectedId(row.id);}}>Mark done</Button>}</div></div>
-          {row.status === "active" && tasks.length > 0 && <><div className={styles.taskProgress}><progress value={count} max={tasks.length} aria-label={row.offerings.title + " progress"}/><span>{count}/{tasks.length} complete</span></div>{next ? <div className={styles.nextTask}><div><span className={styles.taskLabel}>UP NEXT - DAY {next.day_number}</span><h3>{next.title}</h3>{row.offerings.code !== "FSP-30DC" && <p>{next.instructions}</p>}</div>{row.offerings.code !== "FSP-30DC" && <Button size="sm" disabled={busy || loading} onClick={()=>void done(row.id,next)}>{busy ? "Saving..." : "Mark done"}</Button>}</div> : <p className={styles.finished}>All tasks completed. Well done!</p>}</>}
+          {row.status === "active" && tasks.length > 0 && <><div className={styles.taskProgress}><div className={styles.progressCaption}><span>Your progress</span><strong>{count}/{tasks.length} complete</strong></div><progress value={count} max={tasks.length} aria-label={row.offerings.title + " progress"}/></div>{next ? <div className={styles.nextTask}><div><span className={styles.taskLabel}>UP NEXT - DAY {next.day_number}</span><h3>{next.title}</h3>{row.offerings.code !== "FSP-30DC" && <p>{next.instructions}</p>}</div>{row.offerings.code !== "FSP-30DC" && <Button size="sm" disabled={busy || loading} onClick={()=>void done(row.id,next)}>{busy ? "Saving..." : "Mark done"}</Button>}</div> : <p className={styles.finished}>All tasks completed. Well done!</p>}</>}
           {row.status === "active" && !tasks.length && <p className={styles.setupHint}>Your enrollment is active. The FSP team is preparing your tasks.</p>}
           <div className={styles.featureActions}>{row.status === "active" ? <button type="button" onClick={()=>{setMessage("");setActionError("");setSelectedId(row.id);}}>View all tasks <ArrowUpRight size={15}/></button> : <Link href="/courses">View access request<ArrowUpRight size={15}/></Link>}{row.status !== "active" && row.review_note && <span>Admin note: {row.review_note}</span>}</div>
         </div>

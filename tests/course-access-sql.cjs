@@ -1,4 +1,4 @@
-﻿const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');let PGlite;try{({PGlite}=require('../.test-tools/node_modules/@electric-sql/pglite'));}catch{}
+﻿const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');const { PGlite } = require('@electric-sql/pglite');
 const member='00000000-0000-4000-8000-000000000001',admin='00000000-0000-4000-8000-000000000002',other='00000000-0000-4000-8000-000000000003';const paid='00000000-0000-4000-8000-000000000010',free='00000000-0000-4000-8000-000000000011',program='00000000-0000-4000-8000-000000000012',pending='00000000-0000-4000-8000-000000000020',active='00000000-0000-4000-8000-000000000021';let db,freeRow;
 const identity=id=>db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);const value=async(sql,args=[])=> (await db.query(sql,args)).rows[0].value;
 if(PGlite)test.before(async()=>{db=new PGlite();await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA auth;CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;

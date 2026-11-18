@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { roleHome } from "@/lib/auth-redirect";
+import { roleHome, adminRouteAllowed, authServiceUnavailable } from "@/lib/auth-redirect";
 
 /**
  * Server-side route protection (the UI hides links, but this is the gate):
@@ -58,6 +58,13 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+  if (authServiceUnavailable(userError)) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('error', 'auth_unavailable');
+    loginUrl.searchParams.set('redirect', pathname + search);
+    return redirect(loginUrl);
+  }
+
   if (userError || !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname + search);
@@ -92,9 +99,7 @@ export async function proxy(request: NextRequest) {
       : pathname === '/settings' ? '/admin/account' : roleHome(role);
     return redirect(new URL(target, request.url));
   }
-  const adminSections = ['/admin/members', '/admin/payments', '/admin/courses', '/admin/memberships','/admin/task-progress','/admin/challenge-community', '/admin/updates', '/admin/audit-logs', '/admin/account'];
-  if (role === 'admin' && isAdminPath && pathname !== '/admin' && pathname !== '/admin/dashboard'
-      && (!adminSections.some(section => pathname === section || pathname.startsWith(section + '/')) || pathname === '/admin/members/new')) {
+  if (role === 'admin' && isAdminPath && !adminRouteAllowed(pathname)) {
     return redirect(new URL('/admin', request.url));
   }
 

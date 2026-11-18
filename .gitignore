@@ -50,3 +50,9 @@ dev_output.txt
 
 # Share configuration names without local credentials
 !.env.example
+!.env.e2e.example
+
+# Browser output may include authentication state and test account data.
+/playwright-report/
+/test-results/
+/playwright/.auth/

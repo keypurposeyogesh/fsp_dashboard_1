@@ -18,6 +18,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [authUnavailable, setAuthUnavailable] = useState(false);
 
   // Show errors passed back from /auth/callback or proxy.ts.
   useEffect(() => {
@@ -25,19 +26,20 @@ const LoginPage = () => {
     const messages: Record<string, string> = {
       oauth: 'Google sign-in could not be completed. Please try again.',
       disabled: 'This account has been disabled. Contact the FSP team for help.',
+      auth_unavailable: 'We could not verify your session because the sign-in service is temporarily unavailable. Try again in a moment.',
     };
-    if (code && messages[code]) setTimeout(() => setError(messages[code]), 0);
+    if (code && messages[code]) setTimeout(() => { setError(messages[code]); setAuthUnavailable(code === 'auth_unavailable'); }, 0);
   }, []);
 
   // The trusted database role decides the landing page for every sign-in method.
   useEffect(() => {
     if (user && !authLoading) {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('error') === 'disabled') return;
+      if (params.get('error') === 'disabled' || params.get('error') === 'auth_unavailable') return;
       // Request a fresh protected page after cookies have been persisted.
       window.location.replace(loginDestination(user.role, params.get('redirect') ?? ''));
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, authUnavailable]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +47,12 @@ const LoginPage = () => {
     setLoading(true);
     try {
       await login(email, password);
+      if (authUnavailable) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('error');
+        window.history.replaceState(null, '', url);
+        setAuthUnavailable(false);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message.toLowerCase() : '';
       if (msg.includes('invalid')) setError('Invalid email or password.');
@@ -165,6 +173,10 @@ const LoginPage = () => {
                 {error}
               </p>
             )}
+            {authUnavailable && <Button type="button" variant="outline" className="w-full" onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              window.location.replace(loginDestination(user?.role, params.get('redirect') ?? ''));
+            }}>Try again</Button>}
             <Button type="submit" className="w-full" disabled={loading || authLoading || googleLoading}>
               {loading ? 'Signing in...' : 'Sign in'}
             </Button>

@@ -1,5 +1,5 @@
 ﻿const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
-let PGlite;try{({PGlite}=require('../.test-tools/node_modules/@electric-sql/pglite'));}catch{}
+const { PGlite } = require('@electric-sql/pglite');
 const enabled=!!PGlite;
 const member='00000000-0000-4000-8000-000000000001',admin='00000000-0000-4000-8000-000000000002',other='00000000-0000-4000-8000-000000000003',offering='00000000-0000-4000-8000-000000000010',enrollment='00000000-0000-4000-8000-000000000020';
 let db,tasks;

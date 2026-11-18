@@ -7,7 +7,13 @@ const testModule = { exports: {} };
 new Function("require", "exports", "module", js)(require, testModule.exports, testModule);
 const nav = testModule.exports;
 const admin = nav.groupsForRole("admin").flatMap(group => group.links.map(link => link.href));
-assert.deepEqual(admin, ["/admin", "/admin/members", "/admin/payments", "/admin/courses", "/admin/memberships", "/admin/task-progress", "/admin/challenge-community", "/admin/updates", "/admin/audit-logs", "/admin/account"]);
+assert.deepEqual(admin, [
+  "/admin", "/admin/members", "/admin/applications", "/admin/documents", "/admin/payments",
+  "/admin/courses", "/admin/memberships", "/admin/task-progress", "/admin/challenge-community",
+  "/admin/updates", "/admin/events", "/admin/tasks", "/admin/resources", "/admin/fees",
+  "/admin/community", "/admin/notifications", "/admin/reports", "/admin/audit-logs",
+  "/admin/member-logs", "/admin/settings", "/admin/account"
+]);
 for (const role of ["member", "trainer"]) {
   const links = nav.groupsForRole(role).flatMap(group => group.links);
   assert(links.some(link => link.href === "/dashboard"));

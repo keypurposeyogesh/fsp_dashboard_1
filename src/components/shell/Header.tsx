@@ -293,6 +293,7 @@ function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label="Open account menu"
         className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-[var(--muted-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-navy)]"
       >
         <MemberAvatar src={user?.avatar_url} name={user?.name ?? user?.email ?? ""} size={32} />

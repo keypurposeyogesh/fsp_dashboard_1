@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --test-concurrency=1 \"tests/*.cjs\""
+    "test": "node --test --test-concurrency=1 \"tests/*.cjs\" \"database/tests/*.cjs\"",
+    "test:e2e": "playwright test --project=chromium --project=mobile-360 --project=tablet-768 --project=webkit",
+    "test:e2e:live": "playwright test --project=live",
+    "check:secrets": "node scripts/check-secrets.mjs --history",
+    "check:release": "npm run check:secrets && npm test && npm run lint -- --max-warnings 0 && tsc --noEmit && npm run build -- --webpack && npm run check:secrets && npm run test:e2e && npm run test:e2e:live"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -20,6 +24,8 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

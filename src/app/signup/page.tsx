@@ -15,7 +15,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/Card";
 const MIN_PASSWORD = 8;
 
 export default function SignUpPage() {
-  const { signUp } = useAuth();
+  const { signUp, loading: authLoading } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -91,7 +91,8 @@ export default function SignUpPage() {
               instead.
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4" aria-busy={busy}>
+            <form onSubmit={handleSubmit} aria-busy={busy || authLoading}>
+              <fieldset disabled={busy || authLoading} className="m-0 min-w-0 space-y-4 border-0 p-0">
               <div className="space-y-1">
                 <label htmlFor="name" className="block text-xs font-bold">
                   Full name
@@ -163,9 +164,10 @@ export default function SignUpPage() {
                 </div>
               )}
 
-              <Button type="submit" className="mt-2 w-full" disabled={busy}>
+              <Button type="submit" className="mt-2 w-full" disabled={busy || authLoading}>
                 {busy ? "Creating account…" : "Create account"}
               </Button>
+              </fieldset>
             </form>
           )}
         </CardContent>

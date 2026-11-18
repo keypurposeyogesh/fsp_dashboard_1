@@ -8,8 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-let PGlite;
-try { ({ PGlite } = require('../.test-tools/node_modules/@electric-sql/pglite')); } catch {}
+const { PGlite } = require('@electric-sql/pglite');
 const enabled = !!PGlite;
 const sqltest = (name, fn) => test(name, { skip: !enabled }, fn);
 

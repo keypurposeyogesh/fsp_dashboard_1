@@ -9,6 +9,7 @@ function load(path, dependencies={}) {
  },mod.exports,mod);return mod.exports;
 }
 const routing=load('src/lib/auth-redirect.ts');
+const navigation=load('src/components/shell/nav.ts',{'lucide-react':require('lucide-react')});
 test('all roles have the correct default landing page',()=>{
  for(const [role,home] of [['member','/dashboard'],['trainer','/dashboard'],[null,'/dashboard'],['admin','/admin'],['super_admin','/super-admin']]) {
   for(const requested of ['', '/', '/dashboard']) assert.equal(routing.loginDestination(role,requested),home);
@@ -36,11 +37,40 @@ function proxyFor(role,user=true,active=true) {
  return load('src/proxy.ts',{'next/server':{NextResponse:{next:()=>response(),redirect:url=>response(url.toString())}},'@supabase/ssr':{createServerClient:()=>db},'@/lib/auth-redirect':routing}).proxy;
 }
 const request=path=>({url:`http://localhost:3000${path}`,nextUrl:new URL(`http://localhost:3000${path}`),cookies:{getAll:()=>[],set(){}}});
+
+test('every visible admin destination survives both login routing and the server gate',async()=>{
+ for(const role of ['admin','super_admin']) for(const group of navigation.groupsForRole(role)) for(const link of group.links){
+  assert.equal(routing.loginDestination(role,link.href),link.href,`${role}: ${link.href}`);
+  assert.equal((await proxyFor(role)(request(link.href))).location,null,`${role}: ${link.href}`);
+ }
+});
+
+test('expanded admin tools still reject members, unknown sections and account creation',async()=>{
+ for(const path of ['/admin/resources','/admin/events','/admin/documents','/admin/settings']){
+  assert.equal((await proxyFor('member')(request(path))).location,'http://localhost:3000/admin/unauthorized');
+ }
+ for(const path of ['/admin/members/new','/admin/members/new/','/admin/unknown']){
+  assert.equal(routing.loginDestination('admin',path),'/admin');
+  assert.equal((await proxyFor('admin')(request(path))).location,'http://localhost:3000/admin');
+ }
+});
 test('every protected area sends unauthenticated visitors to the shared login',async()=>{
  for(const path of ['/dashboard','/admin/memberships','/super-admin/users']) {
   const result=await proxyFor(null,false)(request(path));const url=new URL(result.location);
   assert.equal(url.pathname,'/login');assert.equal(url.searchParams.get('redirect'),path);
  }
+});
+
+test('temporary auth outages stop at an explicit retry page rather than a login loop',async()=>{
+ const db={auth:{getUser:async()=>({data:{user:null},error:{name:'AuthRetryableFetchError',status:0}})}};
+ const gate=load('src/proxy.ts',{'next/server':{NextResponse:{next:()=>response(),redirect:url=>response(url.toString())}},'@supabase/ssr':{createServerClient:()=>db},'@/lib/auth-redirect':routing}).proxy;
+ const result=await gate(request('/dashboard'));
+ const target=new URL(result.location);
+ assert.equal(target.searchParams.get('error'),'auth_unavailable');
+ assert.equal(target.searchParams.get('redirect'),'/dashboard');
+ assert.equal(routing.authServiceUnavailable({status:503}),true);
+ assert.equal(routing.authServiceUnavailable({status:401}),false);
+ assert.equal(routing.authServiceUnavailable(null),false);
 });
 test('server routing enforces roles, defaults and disabled account handling',async()=>{
  assert.equal((await proxyFor('admin')(request('/dashboard'))).location,'http://localhost:3000/admin');
