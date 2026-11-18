@@ -4,6 +4,7 @@ import { ArrowRight, Compass, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useAsync } from '@/lib/useAsync';
 import { getMyProfile } from '@/lib/data/member';
+import { profileCompletion } from '@/lib/profile';
 import { DailyCourseProgress } from './DailyCourseProgress';
 import { ChallengeCommunity } from './ChallengeCommunity';
 import { ChallengeRewards } from './ChallengeRewards';
@@ -15,6 +16,8 @@ export function UnifiedDashboard() {
   const { user } = useAuth();
   const account = useAsync(getMyProfile, [user?.id], Boolean(user));
   const memberId = account.data?.user_id === user?.id ? account.data?.id : undefined;
+  /* Feeds the XP bonus and the "All About You" badge - computed, not fetched. */
+  const profilePercent = profileCompletion(account.data).percent;
   const refresh = () => {
     account.reload();
     window.dispatchEvent(new Event('fsp-enrollment-changed'));
@@ -27,7 +30,7 @@ export function UnifiedDashboard() {
     <header className={styles.heading}>
       <div>
         <p className={styles.eyebrow}>FSP 30-TASK CHALLENGE</p>
-        <h1>Small steps. Lasting progress<span>.</span></h1>
+        <h1>{account.data?.first_name ? <>Welcome back, {account.data.first_name}<span>.</span></> : <>Small steps. Lasting progress<span>.</span></>}</h1>
         <p className={styles.sub}>30 tasks across a 40-day window, worth up to 3,000 discount points. Keep going at your pace.</p>
       </div>
       <button type="button" onClick={refresh} className={styles.refresh} aria-label="Refresh challenge" disabled={account.loading} data-action="refresh">
@@ -40,7 +43,7 @@ export function UnifiedDashboard() {
     <div className={styles.frontGrid}>
       <div className={styles.frontMain}>
         {/* Status first: orient, then act. */}
-        {account.data && <ChallengeRewards key={user?.id} />}
+        {account.data && <ChallengeRewards key={user?.id} profilePercent={profilePercent} />}
 
         <section id="my-learning" className={styles.learning}>
           <div className={styles.sectionHeading}>
