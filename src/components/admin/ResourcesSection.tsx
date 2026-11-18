@@ -1,33 +1,55 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { ResourceRow, CourseRow } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Badge } from "@/components/ui/Badge";
+
 import { Plus, Edit, Trash2, Video, FileText, Link2, X, RefreshCcw, Search } from "lucide-react";
 
 export function ResourcesSection() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [resources, setResources] = useState<any[]>([]);
-  const [filteredResources, setFilteredResources] = useState<any[]>([]);
+  const [resources, setResources] = useState<ResourceRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<CourseRow[]>([]);
 
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
-  const [selectedResource, setSelectedResource] = useState<any>(null);
+  const [selectedResource, setSelectedResource] = useState<ResourceRow | null>(null);
 
   // Form states
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
-  const [type, setType] = useState<any>("document");
+  const [type, setType] = useState<string>("document");
   const [courseId, setCourseId] = useState("");
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  const fetchInitialData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [resourcesRes, coursesRes] = await Promise.all([
+        supabase.from("resources").select("id, title, url, type, course_id, courses(title)").returns<ResourceRow[]>(),
+        supabase.from("courses").select("id, title").returns<CourseRow[]>()
+      ]);
+
+      if (resourcesRes.error) throw resourcesRes.error;
+      if (coursesRes.error) throw coursesRes.error;
+
+      setResources(resourcesRes.data || []);
+      setCourses(coursesRes.data || []);
+    } catch (err: unknown) {
+      console.error("Error loading resources data:", errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -35,46 +57,29 @@ export function ResourcesSection() {
         setCurrentUser(data.user);
       }
     });
-    fetchInitialData();
-  }, []);
-
-  async function fetchInitialData() {
-    try {
-      setLoading(true);
-      const [resourcesRes, coursesRes] = await Promise.all([
-        supabase.from("resources").select("id, title, url, type, course_id, courses(title)"),
-        supabase.from("courses").select("id, title")
-      ]);
-
-      if (resourcesRes.error) throw resourcesRes.error;
-      if (coursesRes.error) throw coursesRes.error;
-
-      setResources(resourcesRes.data || []);
-      setFilteredResources(resourcesRes.data || []);
-      setCourses(coursesRes.data || []);
-    } catch (err: any) {
-      console.error("Error loading resources data:", err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData, supabase.auth]);
 
   // Handle Search
-  useEffect(() => {
+  const filteredResources = (() => {
     const q = searchQuery.toLowerCase();
     const filtered = resources.filter(r =>
       (r.title || "").toLowerCase().includes(q) ||
       (r.courses?.title || "").toLowerCase().includes(q)
     );
-    setFilteredResources(filtered);
-  }, [searchQuery, resources]);
+    return filtered;
+  })();
 
   // Simple URL Validation
   const isValidUrl = (string: string) => {
     try {
       new URL(string);
       return true;
-    } catch (_) {
+    } catch {
       return false;
     }
   };
@@ -138,14 +143,14 @@ export function ResourcesSection() {
 
       setIsResourceModalOpen(false);
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error saving resource: " + err.message);
+    } catch (err: unknown) {
+      alert("Error saving resource: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenEdit = (res: any) => {
+  const handleOpenEdit = (res: ResourceRow) => {
     setSelectedResource(res);
     setTitle(res.title || "");
     setUrl(res.url || "");
@@ -175,8 +180,8 @@ export function ResourcesSection() {
       });
 
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error deleting resource: " + err.message);
+    } catch (err: unknown) {
+      alert("Error deleting resource: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -207,7 +212,7 @@ export function ResourcesSection() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+          <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
             Refresh
           </Button>
         </CardContent>

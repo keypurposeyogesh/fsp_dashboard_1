@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useShell } from "@/components/shell/AppShell";
 import { notificationCategory } from "@/components/member/workflow";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { notificationDestination } from "@/lib/navigation";
 
 type TabKey = "all" | "unread" | NotificationCategory;
 
@@ -51,9 +53,10 @@ function iconFor(n: AppNotification): { Icon: React.ComponentType<{ className?: 
 }
 
 /** Only follow in-app paths from notification payloads. */
-const safeLink = (link: string | undefined) => (link && link.startsWith("/") && !link.startsWith("//") ? link : null);
 
 export default function NotificationsPage() {
+  const {role}=useAuth();
+  const safeLink=(link:string|undefined)=>link?notificationDestination(role,link):null;
   const router = useRouter();
   const toast = useToast();
   const { refreshUnread } = useShell();

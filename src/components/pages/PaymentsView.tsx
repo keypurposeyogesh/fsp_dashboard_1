@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { MemberSummary, PaymentRow } from "@/lib/data/catalog-types";
+import type { Membership } from "@/lib/data/types";
+import React, { useState, useEffect, useCallback } from "react";
 import { toDataError } from "@/lib/data/errors";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -8,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
-import { CreditCard, Download, FileText, RefreshCcw, Send, Check } from "lucide-react";
+import { CreditCard, FileText, RefreshCcw, Check } from "lucide-react";
 import { logMemberActivity } from "@/lib/activity-log";
 
 export const PaymentsView: React.FC = () => {
@@ -17,19 +20,15 @@ export const PaymentsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [member, setMember] = useState<any>(null);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [membership, setMembership] = useState<any>(null);
+  const [member, setMember] = useState<MemberSummary | null>(null);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [membership, setMembership] = useState<Membership | null>(null);
 
   // Renewal Form
   const [amount, setAmount] = useState("3000");
   const [renewalFee, setRenewalFee] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
-
-  useEffect(() => {
-    fetchInitialData();
-  }, [user]);
 
   // Load the configured renewal fee (admin-editable via app_settings)
   useEffect(() => {
@@ -49,9 +48,9 @@ export const PaymentsView: React.FC = () => {
     }
     loadRenewalFee();
     return () => { cancelled = true; };
-  }, []);
+  }, [supabase]);
 
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true); setLoadError(null);
@@ -59,7 +58,7 @@ export const PaymentsView: React.FC = () => {
       const { data: memberData, error: memberErr } = await supabase
         .from("members")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).returns<MemberSummary[]>()
         .maybeSingle();
 
       if (memberErr) throw memberErr;
@@ -71,7 +70,7 @@ export const PaymentsView: React.FC = () => {
           .from("payments")
           .select("*")
           .eq("member_id", memberData.id)
-          .order("payment_date", { ascending: false });
+          .order("payment_date", { ascending: false }).returns<PaymentRow[]>();
         if (payErr) throw payErr;
         setPayments(payData || []);
 
@@ -87,12 +86,20 @@ export const PaymentsView: React.FC = () => {
 
         await logMemberActivity("PAYMENT_VIEW");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLoadError(toDataError(err, "payments").message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData]);
 
   const handleRequestRenewal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,8 +125,8 @@ export const PaymentsView: React.FC = () => {
       await logMemberActivity("PAYMENT_RENEWAL_REQUEST", { amount: parseFloat(amount) });
       setSuccessMsg("Renewal receipt submitted! Administrative team will reconcile shortly.");
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error submitting renewal: " + err.message);
+    } catch (err: unknown) {
+      alert("Error submitting renewal: " + errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +144,7 @@ export const PaymentsView: React.FC = () => {
             Submit bank transfer receipts for membership renewal verification, and view previous transactions.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+        <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
           Refresh
         </Button>
       </div>

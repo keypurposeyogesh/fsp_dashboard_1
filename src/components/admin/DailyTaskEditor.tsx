@@ -13,5 +13,5 @@ function TaskForm({task}:{task:Task}){
 }
 export function DailyTaskEditor({offeringId}:{offeringId:string}){
   const {data,error,loading,reload}=useAsync(async()=>{const result=await createClient().from("offering_daily_tasks").select("*").eq("offering_id",offeringId).order("day_number");if(result.error)throw result.error;return result.data as Task[];},[offeringId]);
-  return <section className="space-y-3"><h3 className="font-bold">30-day task instructions</h3><p className="text-sm text-[var(--muted)]">Review and customize the starter exercises for your course.</p>{loading && <p>Loading tasks…</p>}{error && <p role="alert">{error.message}</p>}<Button type="button" variant="outline" size="sm" onClick={reload}>Refresh tasks</Button>{data?.map(task=><TaskForm key={task.id} task={task}/>)}</section>;
+  return <section className="space-y-3"><h3 className="font-bold">30-day task instructions</h3><p className="text-sm text-[var(--muted)]">Review and customize the starter exercises for your course.</p>{loading && <p>Loading tasks…</p>}{error && <p role="alert">{error.message}</p>}<Button type="button" variant="outline" size="sm" onClick={reload} data-action="refresh">Refresh tasks</Button>{data?.map(task=><TaskForm key={task.id} task={task}/>)}</section>;
 }

@@ -92,7 +92,7 @@ export async function proxy(request: NextRequest) {
       : pathname === '/settings' ? '/admin/account' : roleHome(role);
     return redirect(new URL(target, request.url));
   }
-  const adminSections = ['/admin/members', '/admin/payments', '/admin/courses', '/admin/memberships', '/admin/updates', '/admin/audit-logs', '/admin/account'];
+  const adminSections = ['/admin/members', '/admin/payments', '/admin/courses', '/admin/memberships','/admin/task-progress','/admin/challenge-community', '/admin/updates', '/admin/audit-logs', '/admin/account'];
   if (role === 'admin' && isAdminPath && pathname !== '/admin' && pathname !== '/admin/dashboard'
       && (!adminSections.some(section => pathname === section || pathname.startsWith(section + '/')) || pathname === '/admin/members/new')) {
     return redirect(new URL('/admin', request.url));

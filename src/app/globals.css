@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../**/*.{ts,tsx,js,jsx}";
 
 :root {
   /* === FSP BRAND NAVY ===
@@ -275,4 +276,23 @@ body {
 
 .hover\:bg-brand-gold-hover:hover {
   background-color: var(--brand-gold-hover);
+}
+
+/* Shared action color for refresh controls across every app area. */
+button[data-action="refresh"] {
+  background: var(--brand-gold, #ffbf00) !important;
+  color: var(--brand-navy, #1d3a8f) !important;
+  border-color: var(--brand-gold, #ffbf00) !important;
+}
+button[data-action="refresh"]:hover:not(:disabled) {
+  background: var(--brand-gold-hover, #e8ac00) !important;
+  border-color: var(--brand-gold-hover, #e8ac00) !important;
+}
+button[data-action="refresh"]:focus-visible {
+  outline: 2px solid var(--brand-navy, #1d3a8f);
+  outline-offset: 3px;
+}
+button[data-action="refresh"]:disabled {
+  opacity: .5;
+  cursor: not-allowed;
 }

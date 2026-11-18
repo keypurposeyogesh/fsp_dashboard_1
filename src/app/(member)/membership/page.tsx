@@ -12,6 +12,7 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/components/ui/Timeline";
 import { MembershipCard } from "@/components/member/MembershipCard";
+import { useEnrollmentRefresh } from "@/lib/enrollment-refresh";
 import { LinkButton } from "@/components/member/LinkButton";
 import {
   currentMembership,
@@ -40,6 +41,7 @@ const RENEWAL_WINDOW_DAYS = 30;
 export default function MembershipPage() {
   const { user } = useAuth();
   const { data, error, loading, reload } = useAsync(loadMembershipPage, []);
+  useEnrollmentRefresh(reload, Boolean(user));
 
   const header = <PageHeader title="Membership" description="Your FSP membership status, validity and history." />;
 

@@ -78,3 +78,22 @@ test('retired organization links always return to the correct role home',async()
   }
  }
 });
+
+test('task progress allows both admin roles and rejects member access',async()=>{
+ for(const role of ['admin','super_admin']) {
+  assert.equal(routing.loginDestination(role,'/admin/task-progress'),'/admin/task-progress');
+  assert.equal((await proxyFor(role)(request('/admin/task-progress'))).location,null);
+ }
+ assert.equal(routing.loginDestination('member','/admin/task-progress'),'/dashboard');
+ assert.equal((await proxyFor('member')(request('/admin/task-progress'))).location,'http://localhost:3000/admin/unauthorized');
+});
+
+test('challenge community uses role-specific routes and keeps admin moderation protected',async()=>{
+ for(const role of ['admin','super_admin']){
+  assert.equal(routing.loginDestination(role,'/admin/challenge-community'),'/admin/challenge-community');
+  assert.equal((await proxyFor(role)(request('/admin/challenge-community'))).location,null);
+ }
+ assert.equal(routing.loginDestination('member','/challenge-community'),'/challenge-community');
+ assert.equal((await proxyFor('member')(request('/challenge-community'))).location,null);
+ assert.equal((await proxyFor('member')(request('/admin/challenge-community'))).location,'http://localhost:3000/admin/unauthorized');
+});

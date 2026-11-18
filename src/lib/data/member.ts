@@ -30,14 +30,25 @@ async function currentUserId(): Promise<string> {
 /** The signed-in user's member record (oldest row if duplicates still exist). */
 export async function getMyProfile(): Promise<MemberProfile | null> {
   const uid = await currentUserId();
-  const res = await supabase()
+  const readProfile = () => supabase()
     .from("members")
     .select("*")
     .eq("user_id", uid)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  return unwrap(res, "getMyProfile") as MemberProfile | null;
+  const profile = unwrap(await readProfile(), "getMyProfile") as MemberProfile | null;
+  if (profile) return profile;
+
+  const sync = unwrap(await supabase().rpc("sync_current_user"), "getMyProfile.sync");
+  if (!sync?.success) {
+    throw new DataError("unavailable", sync?.error === "profile_conflict"
+      ? "Your account has a profile conflict. An administrator needs to check the Supabase profile sync records."
+      : "Your profile could not be created. An administrator needs to check the Supabase profile sync records.");
+  }
+  const repaired = unwrap(await readProfile(), "getMyProfile.retry") as MemberProfile | null;
+  if (!repaired) throw new DataError("unavailable", "Your profile is still missing after account sync. An administrator needs to check the Supabase profile sync records.");
+  return repaired;
 }
 
 export async function updateMyProfile(

@@ -66,7 +66,7 @@ export default function AdminAuditLogs() {
         <input type="search" aria-label="Search activity, name or email" placeholder="Search activity, name or email" value={search}
           onChange={event => { setSearch(event.target.value); setPage(1); }} />
       </div>
-      <Button variant="outline" size="sm" disabled={loading} onClick={load} icon={<RefreshCcw className="h-4 w-4" />}>Refresh</Button>
+      <Button variant="outline" size="sm" disabled={loading} onClick={load} icon={<RefreshCcw className="h-4 w-4" />} data-action="refresh">Refresh</Button>
     </section>
     <section className={styles.panel} aria-label="Recent activity">
       <div className={styles.panelHeading}><h2>Recent activity</h2><span>Latest 500 entries · Times in IST</span></div>

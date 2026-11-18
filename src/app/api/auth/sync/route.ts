@@ -20,32 +20,26 @@ export async function POST() {
     // Return the current user profile from public.users
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, email, name, role")
+      .select("id, email, name, role, is_active")
       .eq("id", user.id)
       .maybeSingle();
 
     if (userError || !userData) {
-      // Profile not synced yet. Never derive the role from user_metadata
-      // (user-writable); report the least-privileged role.
       return NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0],
-          role: "member"
-        },
-        syncResult: syncData
-      });
+        success: false,
+        error: "Your profile could not be synchronized. Please contact FSP support.",
+        code: syncData?.error ?? "profile_missing",
+      }, { status: syncError || userError ? 503 : 409 });
     }
+    if(userData.is_active === false) return NextResponse.json({success:false,error:"Account disabled"},{status:403});
 
     return NextResponse.json({
       success: true,
       user: userData,
       syncResult: syncData
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Auth sync error:", err);
-    return NextResponse.json({ error: err.message || "Sync failed" }, { status: 500 });
+    return NextResponse.json({ error: "Profile sync failed. Please try again." }, { status: 500 });
   }
 }

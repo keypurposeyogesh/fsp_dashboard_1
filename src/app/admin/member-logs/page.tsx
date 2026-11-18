@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { ActivityLogRow } from "@/lib/data/catalog-types";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +14,7 @@ import { RefreshCcw, Search, Eye, X, ChevronLeft, ChevronRight } from "lucide-re
 export default function AdminMemberLogs() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<ActivityLogRow[]>([]);
   const [count, setCount] = useState(0);
 
   // Filter States
@@ -25,13 +27,9 @@ export default function AdminMemberLogs() {
   const pageSize = 50;
 
   // Selected Log Detail Modal
-  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [selectedLog, setSelectedLog] = useState<ActivityLogRow | null>(null);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [page, activityType, sortOrder]);
-
-  async function fetchLogs() {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const startRange = (page - 1) * pageSize;
@@ -72,17 +70,25 @@ export default function AdminMemberLogs() {
       // Range Pagination
       query = query.range(startRange, endRange);
 
-      const { data, count: totalCount, error } = await query;
+      const { data, count: totalCount, error } = await query.returns<ActivityLogRow[]>();
       if (error) throw error;
 
       setLogs(data || []);
       setCount(totalCount || 0);
-    } catch (err: any) {
-      console.error("Error loading activity logs:", err.message);
+    } catch (err: unknown) {
+      console.error("Error loading activity logs:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase, page, activityType, sortOrder, pageSize]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchLogs();
+    });
+    return () => { cancelled = true; };
+  }, [fetchLogs]);
 
   // Filtered client side search to allow search by first_name/last_name/email
   const filteredLogs = logs.filter(log => {
@@ -137,7 +143,7 @@ export default function AdminMemberLogs() {
             Reconcile, audit, and inspect user activity metrics from the member portal.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchLogs} icon={<RefreshCcw className="w-4 h-4" />}>
+        <Button variant="outline" size="sm" onClick={fetchLogs} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
           Refresh logs
         </Button>
       </div>
@@ -189,17 +195,17 @@ export default function AdminMemberLogs() {
                 {
                   header: "Member Name",
                   accessor: "name",
-                  render: (log: any) => log.members ? `${log.members.first_name || ""} ${log.members.last_name || ""}` : "Anonymous User"
+                  render: (log: ActivityLogRow) => log.members ? `${log.members.first_name || ""} ${log.members.last_name || ""}` : "Anonymous User"
                 },
                 {
                   header: "Email",
                   accessor: "email",
-                  render: (log: any) => log.members?.users?.email || "—"
+                  render: (log: ActivityLogRow) => log.members?.users?.email || "—"
                 },
                 {
                   header: "Activity",
                   accessor: "action",
-                  render: (log: any) => (
+                  render: (log: ActivityLogRow) => (
                     <Badge variant={log.action.includes("FAILED") ? "danger" : log.action.includes("AUTH") ? "success" : "primary"}>
                       {log.action}
                     </Badge>
@@ -208,17 +214,17 @@ export default function AdminMemberLogs() {
                 {
                   header: "IP Address",
                   accessor: "ip_address",
-                  render: (log: any) => <span className="font-mono text-[10px] text-slate-500">{log.ip_address || "—"}</span>
+                  render: (log: ActivityLogRow) => <span className="font-mono text-[10px] text-slate-500">{log.ip_address || "—"}</span>
                 },
                 {
                   header: "Date/Time",
                   accessor: "created_at",
-                  render: (log: any) => new Date(log.created_at).toLocaleString()
+                  render: (log: ActivityLogRow) => new Date(log.created_at).toLocaleString()
                 },
                 {
                   header: "Actions",
                   accessor: "actions",
-                  render: (log: any) => (
+                  render: (log: ActivityLogRow) => (
                     <Button variant="ghost" size="xs" onClick={() => setSelectedLog(log)} icon={<Eye className="w-3.5 h-3.5" />}>
                       Inspect
                     </Button>

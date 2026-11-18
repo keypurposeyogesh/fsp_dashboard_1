@@ -1,35 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { PaymentRow } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Search, Check, RefreshCcw } from "lucide-react";
+import { Check, RefreshCcw } from "lucide-react";
 
 export function PaymentsSection() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setCurrentUser(data.user);
-      }
-    });
-    fetchPayments();
-  }, []);
-
-  async function fetchPayments() {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -52,20 +45,32 @@ export function PaymentsSection() {
               email
             )
           )
-        `);
+        `).returns<PaymentRow[]>();
 
       if (error) throw error;
       setPayments(data || []);
-      setFilteredPayments(data || []);
-    } catch (err: any) {
-      console.error("Error fetching payments:", err.message);
+    } catch (err: unknown) {
+      console.error("Error fetching payments:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchPayments();
+    });
+    return () => { cancelled = true; };
+  }, [fetchPayments, supabase.auth]);
 
   // Handle Search & Filter
-  useEffect(() => {
+  const filteredPayments = (() => {
     const q = searchQuery.toLowerCase();
     const filtered = payments.filter(p => {
       const memberName = `${p.members?.first_name || ""} ${p.members?.last_name || ""}`.toLowerCase();
@@ -74,8 +79,8 @@ export function PaymentsSection() {
       const matchesStatus = statusFilter === "all" || p.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-    setFilteredPayments(filtered);
-  }, [searchQuery, statusFilter, payments]);
+    return filtered;
+  })();
 
   const handleUpdateStatus = async (paymentId: string, newStatus: string) => {
     try {
@@ -116,8 +121,8 @@ export function PaymentsSection() {
       }
 
       await fetchPayments();
-    } catch (err: any) {
-      alert("Error updating payment: " + err.message);
+    } catch (err: unknown) {
+      alert("Error updating payment: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -139,7 +144,7 @@ export function PaymentsSection() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
-            <Select value={statusFilter} onChange={(e: any) => setStatusFilter(e.target.value)} className="w-40 border rounded px-2">
+            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40 border rounded px-2">
               <option value="all">All Payments</option>
               <option value="pending">Pending</option>
               <option value="succeeded">Succeeded</option>
@@ -147,7 +152,7 @@ export function PaymentsSection() {
               <option value="refunded">Refunded</option>
             </Select>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchPayments} icon={<RefreshCcw className="w-4 h-4" />}>
+          <Button variant="outline" size="sm" onClick={fetchPayments} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
             Refresh
           </Button>
         </CardContent>

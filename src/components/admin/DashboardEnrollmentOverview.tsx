@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ProgramFacts } from "@/components/member/DashboardPrograms";
+import { CourseAccessReview } from "@/components/admin/CourseAccessReview";
 import { PaymentReview } from "@/components/admin/EnrollmentManagement";
 import { statusLabel, type Offering, type OfferingEnrollment } from "@/lib/data/enrollments";
 import styles from "./DashboardEnrollmentOverview.module.css";
@@ -35,7 +36,7 @@ function EnrollmentDetails({ row, refresh }: { row: OfferingEnrollment; refresh:
     <ProgramFacts item={row.offerings} />
     <p>Enrolled on {displayDate(row.created_at)}</p>
     {row.review_note && <p>{row.review_note}</p>}
-    {row.status === "payment_review" && <PaymentReview row={row} onReviewed={refresh} />}
+    {row.status === "access_requested" && <CourseAccessReview row={row} onReviewed={refresh}/>} {row.status === "payment_review" && row.offerings.kind !== "course" && <PaymentReview row={row} onReviewed={refresh} />}
   </div>;
 }
 function EnrollmentStatus({ status }: { status: OfferingEnrollment["status"] }) {
@@ -89,7 +90,7 @@ export function DashboardEnrollmentOverview({ offerings, enrollments, date, refr
           <label>Search<input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Search member or program" type="search" /></label>
           <label>Program<select value={program} onChange={event => { setProgram(event.target.value); setPage(1); }}><option value="all">All programs</option>
             {offerings.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
-          <label>Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="all">All statuses</option><option value="active">Active</option><option value="pending_payment">Pending payment</option><option value="payment_review">Payment review</option></select></label>
+          <label>Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="all">All statuses</option><option value="active">Active</option><option value="pending_payment">Pending payment</option><option value="payment_review">Payment review</option><option value="access_requested">Awaiting access approval</option><option value="access_denied">Access declined</option></select></label>
         </div>
         {selected && <div className={styles.selectedProgram}><h3>{selected.title}</h3><Schedule item={selected} />
           <span>{enrollments.filter(row => row.offering_id === selected.id).length} enrollment records</span></div>}

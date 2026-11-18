@@ -1,47 +1,40 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { CertificateRow, MemberSummary, CourseRow } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Search, Plus, Award, Trash2, X, RefreshCcw } from "lucide-react";
+import { Search, Plus, Trash2, X, RefreshCcw } from "lucide-react";
 
 export default function AdminCertificates() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [certificates, setCertificates] = useState<any[]>([]);
-  const [filteredCertificates, setFilteredCertificates] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<CertificateRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [members, setMembers] = useState<any[]>([]);
-  const [courses, setCourses] = useState<any[]>([]);
+  const [members, setMembers] = useState<MemberSummary[]>([]);
+  const [courses, setCourses] = useState<CourseRow[]>([]);
 
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [issueMemberId, setIssueMemberId] = useState("");
   const [issueCourseId, setIssueCourseId] = useState("");
   const [certUrl, setCertUrl] = useState("");
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setCurrentUser(data.user);
-      }
-    });
-    fetchInitialData();
-  }, []);
-
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
       const [certsRes, membersRes, coursesRes] = await Promise.all([
-        supabase.from("certificates").select("id, issued_at, certificate_url, members(first_name, last_name), courses(title)"),
-        supabase.from("members").select("id, first_name, last_name"),
-        supabase.from("courses").select("id, title")
+        supabase.from("certificates").select("id, issued_at, certificate_url, members(first_name, last_name), courses(title)").returns<CertificateRow[]>(),
+        supabase.from("members").select("id, first_name, last_name").returns<MemberSummary[]>(),
+        supabase.from("courses").select("id, title").returns<CourseRow[]>()
       ]);
 
       if (certsRes.error) throw certsRes.error;
@@ -49,26 +42,38 @@ export default function AdminCertificates() {
       if (coursesRes.error) throw coursesRes.error;
 
       setCertificates(certsRes.data || []);
-      setFilteredCertificates(certsRes.data || []);
       setMembers(membersRes.data || []);
       setCourses(coursesRes.data || []);
-    } catch (err: any) {
-      console.error("Error fetching initial certificates data:", err.message);
+    } catch (err: unknown) {
+      console.error("Error fetching initial certificates data:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData, supabase.auth]);
 
   // Handle Search
-  useEffect(() => {
+  const filteredCertificates = (() => {
     const q = searchQuery.toLowerCase();
     const filtered = certificates.filter(c => {
       const memberName = `${c.members?.first_name || ""} ${c.members?.last_name || ""}`.toLowerCase();
       const courseTitle = (c.courses?.title || "").toLowerCase();
       return memberName.includes(q) || courseTitle.includes(q);
     });
-    setFilteredCertificates(filtered);
-  }, [searchQuery, certificates]);
+    return filtered;
+  })();
 
   const handleIssueCertificate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,8 +108,8 @@ export default function AdminCertificates() {
       setIssueCourseId("");
       setCertUrl("");
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error issuing certificate: " + err.message);
+    } catch (err: unknown) {
+      alert("Error issuing certificate: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -131,8 +136,8 @@ export default function AdminCertificates() {
       });
 
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error revoking certificate: " + err.message);
+    } catch (err: unknown) {
+      alert("Error revoking certificate: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -163,7 +168,7 @@ export default function AdminCertificates() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+          <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
             Refresh
           </Button>
         </CardContent>

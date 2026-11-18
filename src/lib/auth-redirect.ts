@@ -16,7 +16,7 @@ export function loginDestination(role: string | null | undefined, requested = ''
     if (path === '/' || path === '/dashboard' || ['/login','/signup','/auth','/api','/_next','/forgot-password','/reset-password','/organizations'].some(within)) return home;
     if (role === 'super_admin') return within('/admin') || within('/super-admin') ? requested : home;
     if (role === 'admin') {
-      const sections = ['/admin/members','/admin/payments','/admin/courses','/admin/memberships','/admin/updates','/admin/audit-logs','/admin/account'];
+      const sections = ['/admin/members','/admin/payments','/admin/courses','/admin/memberships','/admin/task-progress','/admin/challenge-community','/admin/updates','/admin/audit-logs','/admin/account'];
       return path === '/admin' || path === '/admin/dashboard' || (sections.some(within) && path !== '/admin/members/new') ? requested : home;
     }
     return within('/admin') || within('/super-admin') ? home : requested;

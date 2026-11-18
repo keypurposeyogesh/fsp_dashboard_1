@@ -1,7 +1,8 @@
+import { errorMessage } from "@/lib/error-message";
 /**
  * Securely dispatches user activity details to the server-side audit logs.
  */
-export async function logMemberActivity(action: string, details: any = {}) {
+export async function logMemberActivity(action: string, details: Record<string, unknown> = {}) {
   try {
     await fetch("/api/activity", {
       method: "POST",
@@ -10,7 +11,7 @@ export async function logMemberActivity(action: string, details: any = {}) {
       },
       body: JSON.stringify({ action, details }),
     });
-  } catch (err: any) {
-    console.error("Client logMemberActivity error:", err.message);
+  } catch (err: unknown) {
+    console.error("Client logMemberActivity error:", errorMessage(err));
   }
 }

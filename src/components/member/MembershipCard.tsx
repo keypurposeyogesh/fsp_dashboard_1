@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { BadgeCheck, CalendarClock } from "lucide-react";
 import type { Membership } from "@/lib/data/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -28,6 +29,18 @@ export function MembershipCard({
 }) {
   const term = membershipTerm(membership);
   const active = term.status === "active";
+
+  if (compact) {
+    return (
+      <section aria-label="Membership summary" className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] px-4 py-3 text-xs", className)}>
+        <span className="inline-flex items-center gap-2 font-semibold text-[var(--foreground)]"><BadgeCheck className="h-4 w-4 text-[var(--brand-navy)]" aria-hidden="true" />Membership</span>
+        {memberNumber && <span className="font-mono text-[var(--muted)]">{memberNumber}</span>}
+        <StatusBadge kind="membership" status={term.status} />
+        <Link href="/membership" className="ml-auto rounded-sm font-semibold text-[var(--brand-navy)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4">Details<span className="sr-only"> about your membership</span> &rarr;</Link>
+        {footer}
+      </section>
+    );
+  }
 
   return (
     <section

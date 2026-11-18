@@ -1,25 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { EventRow, RegistrationRow } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { Search, Plus, Edit, Trash2, Calendar, Users, X, RefreshCcw } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Users, X, RefreshCcw } from "lucide-react";
 
 export function EventsSection() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState<any[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<EventRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isRegistrationsModalOpen, setIsRegistrationsModalOpen] = useState(false);
-  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -29,18 +31,9 @@ export function EventsSection() {
   const [location, setLocation] = useState("");
   const [fee, setFee] = useState("");
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setCurrentUser(data.user);
-      }
-    });
-    fetchEvents();
-  }, []);
-
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -57,27 +50,39 @@ export function EventsSection() {
             id
           )
         `)
-        .order("start_time", { ascending: true });
+        .order("start_time", { ascending: true }).returns<EventRow[]>();
 
       if (error) throw error;
       setEvents(data || []);
-      setFilteredEvents(data || []);
-    } catch (err: any) {
-      console.error("Error fetching events:", err.message);
+    } catch (err: unknown) {
+      console.error("Error fetching events:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchEvents();
+    });
+    return () => { cancelled = true; };
+  }, [fetchEvents, supabase.auth]);
 
   // Handle Search
-  useEffect(() => {
+  const filteredEvents = (() => {
     const q = searchQuery.toLowerCase();
     const filtered = events.filter(e =>
       (e.title || "").toLowerCase().includes(q) ||
       (e.location || "").toLowerCase().includes(q)
     );
-    setFilteredEvents(filtered);
-  }, [searchQuery, events]);
+    return filtered;
+  })();
 
   const resetForm = () => {
     setTitle("");
@@ -146,14 +151,14 @@ export function EventsSection() {
 
       setIsEventModalOpen(false);
       await fetchEvents();
-    } catch (err: any) {
-      alert("Error saving event: " + err.message);
+    } catch (err: unknown) {
+      alert("Error saving event: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenEditEvent = (evt: any) => {
+  const handleOpenEditEvent = (evt: EventRow) => {
     setSelectedEvent(evt);
     setTitle(evt.title || "");
     setDescription(evt.description || "");
@@ -191,8 +196,8 @@ export function EventsSection() {
       });
 
       await fetchEvents();
-    } catch (err: any) {
-      alert("Error deleting event: " + err.message);
+    } catch (err: unknown) {
+      alert("Error deleting event: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -215,13 +220,13 @@ export function EventsSection() {
             )
           )
         `)
-        .eq("event_id", eventId);
+        .eq("event_id", eventId).returns<RegistrationRow[]>();
 
       if (error) throw error;
       setRegistrations(data || []);
       setIsRegistrationsModalOpen(true);
-    } catch (err: any) {
-      alert("Error loading registrations: " + err.message);
+    } catch (err: unknown) {
+      alert("Error loading registrations: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -252,7 +257,7 @@ export function EventsSection() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={fetchEvents} icon={<RefreshCcw className="w-4 h-4" />}>
+          <Button variant="outline" size="sm" onClick={fetchEvents} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
             Refresh
           </Button>
         </CardContent>

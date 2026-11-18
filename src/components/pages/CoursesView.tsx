@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { notifyEnrollmentChanged } from "@/lib/enrollment-refresh";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,9 +13,10 @@ import { createClient } from "@/lib/supabase/client";
 import { PaymentReceiptLink } from "@/components/member/PaymentReceiptLink";
 import { offeringDates, programTimeLabel } from "@/lib/data/enrollments";
 import { ProgramFlyer } from "@/components/member/TodaysUpdates";
+import { CourseAccessDetails } from "@/components/member/CourseAccessDetails";
 import { DashboardPrograms } from "@/components/member/DashboardPrograms";
 import { indiaDate, registrationOpen } from "@/lib/program-schedule";
-import { enrollmentAction, enrollmentError, feeLabel, isUpcoming, offeringFeeLabel, loadEnrollmentData, statusLabel, type Offering, type OfferingEnrollment } from "@/lib/data/enrollments";
+import { enrollmentAction, enrollmentError, courseAccessLabel, feeLabel, isUpcoming, offeringFeeLabel, loadEnrollmentData, statusLabel, type Offering, type OfferingEnrollment } from "@/lib/data/enrollments";
 
 const DashboardEnrollmentOverview = dynamic(() => import("@/components/admin/DashboardEnrollmentOverview").then(module => module.DashboardEnrollmentOverview));
 const EnrollmentManagement = dynamic(() => import("@/components/admin/EnrollmentManagement").then(module => module.EnrollmentManagement));
@@ -90,10 +92,10 @@ function MemberCourses({ userId, initialView, dashboard, sessions }: { userId: s
     if (!selected || busy || manager) return;
     setBusy(true); setError("");
     try {
-      const row = await enrollmentAction("enroll_offering", { p_offering_id: selected.id });
+      const row = await enrollmentAction(selected.kind === "course" ? "request_course_access" : "enroll_offering", { p_offering_id: selected.id });
       setEnrollments(previous => [{ ...row, offerings: selected }, ...previous.filter(item => item.id !== row.id)]);
-      window.dispatchEvent(new Event("fsp-enrollment-changed"));
-      setMessage(row.status === "active" ? "Registration confirmed." : "Enrollment saved. Complete your payment and submit its reference below.");
+      notifyEnrollmentChanged();
+      setMessage(selected.kind === "course" ? row.status === "active" ? "Your course access is active." : "Access requested. An administrator will review your request." : row.status === "active" ? "Registration confirmed." : "Enrollment saved. Complete your payment and submit its reference below.");
     } catch (err) { setError(enrollmentError(err)); }
     finally { setBusy(false); }
   }
@@ -113,6 +115,7 @@ function MemberCourses({ userId, initialView, dashboard, sessions }: { userId: s
       }
       if (!path) throw new Error("Upload a payment screenshot before submitting.");
       const row = await enrollmentAction("submit_enrollment_payment", { p_enrollment_id: existing.id, p_reference: reference.trim(), p_receipt_path: path });
+      notifyEnrollmentChanged();
       setEnrollments(previous => previous.map(item => item.id === row.id ? { ...row, offerings: selected } : item));
       setMessage("Payment reference submitted. Your enrollment becomes active after an administrator verifies payment."); setReference("");
     } catch (err) { setError(enrollmentError(err)); }
@@ -128,20 +131,20 @@ function MemberCourses({ userId, initialView, dashboard, sessions }: { userId: s
   });
   return <div className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><h1 className="fsp-dot text-3xl font-black">{sessions ? "Events & Calendar" : dashboard ? "Programs & Enrollments" : initialView === "enrollments" ? "Course Payments" : "Courses & Programs"}</h1><p className="mt-2 text-sm text-[var(--muted)]">Explore experiences, enroll, and follow your learning journey.</p></div>
-      <Button variant="outline" size="sm" disabled={loading || busy} onClick={() => { setLoading(true); void refresh(); }} icon={<RefreshCcw className="w-4 h-4" />}>Refresh</Button>
+      <div><h1 className="fsp-dot text-3xl font-black">{sessions ? "Events & Calendar" : dashboard ? "Programs & Enrollments" : initialView === "enrollments" ? "My Access & Registrations" : "Courses & Programs"}</h1><p className="mt-2 text-sm text-[var(--muted)]">Explore courses, request access, and follow your learning journey.</p></div>
+      <Button variant="outline" size="sm" disabled={loading || busy} onClick={() => { setLoading(true); void refresh(); }} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">Refresh</Button>
     </div>
     {!selected && error && <div role="alert" className="rounded-xl border border-[var(--danger)] p-4 text-sm text-[var(--danger)]">{error}</div>}
     {sessions && <div className="space-y-3"><p className="text-sm text-[var(--muted)]">Browse scheduled sessions and register by clicking a poster or topic.</p><div className="flex flex-wrap gap-2">{([["all","All upcoming sessions"],["unregistered","Not registered"],["registered","My registered sessions"]] as const).map(([key,label])=><Button key={key} size="sm" variant={sessionFilter===key?"primary":"outline"} aria-pressed={sessionFilter===key} onClick={()=>setSessionFilter(key)}>{label}</Button>)}</div></div>}
     {!loading && !error && !hasMember && !manager && <Card className="p-5">Complete your <Link className="underline" href="/profile">member profile</Link> before enrolling. If it is already complete, contact FSP support.</Card>}
     {!dashboard && <div className="flex flex-wrap gap-2" aria-label="Catalog views">
-      {([["course", "Courses"], ["program", "Programs"], ["enrollments", "My Enrollments"]] as const).map(([key, label]) => <Button key={key} variant={view === key ? "primary" : "outline"} size="sm" onClick={() => setView(key)} aria-pressed={view === key}>{label} ({key === "enrollments" ? enrollments.length : offerings.filter(item => item.kind === key).length})</Button>)}
+      {([["course", "Courses"], ["program", "Programs"], ["enrollments", "My Access"]] as const).map(([key, label]) => <Button key={key} variant={view === key ? "primary" : "outline"} size="sm" onClick={() => setView(key)} aria-pressed={view === key}>{label} ({key === "enrollments" ? enrollments.length : offerings.filter(item => item.kind === key).length})</Button>)}
     </div>}
     {loading ? <p role="status">Loading courses and enrollments…</p> : dashboard ? <><DashboardPrograms sessions={sessions} includePast={sessions && sessionFilter === "registered"} offerings={sessions ? sessionOfferings : offerings} enrollments={enrollments} date={today} manager={manager} onOpen={openDetails} />{manager && !sessions && <><DashboardEnrollmentOverview offerings={allOfferings} enrollments={adminEnrollments} date={today} refresh={refresh} /><details className="rounded-xl border border-[var(--card-border)] p-4" onToggle={event=>setSetupOpen(event.currentTarget.open)}><summary className="cursor-pointer font-semibold">Program setup &amp; payment instructions</summary>{setupOpen && <div className="mt-5"><EnrollmentManagement setupOnly onProgramChanged={refresh}/></div>}</details></>}</> : view === "enrollments" ? <div className="space-y-3">
       {!enrollments.length && <Card className="p-6 text-[var(--muted)]">You haven’t enrolled yet. Choose a course or program to get started.</Card>}
       {enrollments.map(row => <Card key={row.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
-        <div><h2 className="font-bold">{row.offerings.title}</h2><p className="mt-1 text-sm text-[var(--muted)]">{feeLabel(row.amount, row.currency)} · {new Date(row.created_at).toLocaleDateString("en-IN")}</p><p className="mt-1 text-sm">Payment: {row.amount === 0 ? "Not required" : row.status === "active" ? "Verified" : row.status === "payment_review" ? "Awaiting verification" : "Not verified"}</p>{row.review_note && <p className="mt-2 text-sm">Admin note: {row.review_note}</p>}</div>
-        <div className="flex items-center gap-3"><Badge variant={row.status === "active" ? "success" : "warning"}>{statusLabel(row.status)}</Badge><Button variant="outline" size="sm" onClick={() => openDetails(row.offerings)}>{row.status === "pending_payment" ? "Payment details" : "View details"}</Button></div>
+        <div><h2 className="font-bold">{row.offerings.title}</h2><p className="mt-1 text-sm text-[var(--muted)]">{row.offerings.kind !== "course" && <>{feeLabel(row.amount,row.currency)} ? </>}{new Date(row.created_at).toLocaleDateString("en-IN")}</p>{row.review_note && <p className="mt-2 text-sm">Admin note: {row.review_note}</p>}</div>
+        <div className="flex items-center gap-3"><Badge variant={row.status === "active" ? "success" : "warning"}>{row.offerings.kind === "course" ? courseAccessLabel(row.status) : statusLabel(row.status)}</Badge><Button variant="outline" size="sm" onClick={()=>openDetails(row.offerings)}>{row.offerings.kind === "course" ? "View access" : row.status === "pending_payment" ? "Payment details" : "View details"}</Button></div>
       </Card>)}
     </div> : <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {!catalog.length && !error && <p>No {view === "course" ? "courses" : "programs"} available.</p>}
@@ -149,25 +152,25 @@ function MemberCourses({ userId, initialView, dashboard, sessions }: { userId: s
         const enrollment = enrollments.find(row => row.offering_id === item.id);
         return <Card key={item.id} className="flex flex-col justify-between space-y-5 p-5">
           <div className="space-y-3">
-            <div className="flex justify-between gap-2"><div className="rounded-xl bg-[var(--brand-navy)] p-3 text-white">{item.kind === "course" ? <BookOpen size={24} /> : <Users size={24} />}</div><Badge variant={enrollment?.status === "active" ? "success" : isUpcoming(item) ? "warning" : "secondary"}>{enrollment ? statusLabel(enrollment.status) : isUpcoming(item) ? "Upcoming" : "Available"}</Badge></div>
+            <div className="flex justify-between gap-2"><div className="rounded-xl bg-[var(--brand-navy)] p-3 text-white">{item.kind === "course" ? <BookOpen size={24} /> : <Users size={24} />}</div><Badge variant={enrollment?.status === "active" ? "success" : isUpcoming(item) ? "warning" : "secondary"}>{enrollment ? item.kind === "course" ? courseAccessLabel(enrollment.status) : statusLabel(enrollment.status) : isUpcoming(item) ? "Upcoming" : "Available"}</Badge></div>
             <p className="text-xs font-bold text-[var(--muted)]">{item.code}</p><h2 className="text-lg font-bold">{item.title}</h2><p className="line-clamp-3 text-sm leading-relaxed text-[var(--muted)]">{item.description}</p>
             <p className="flex items-center gap-2 text-xs text-[var(--muted)]"><Calendar size={14} />{item.duration}{item.format ? ` · ${item.format}` : ""}</p>
             {offeringDates(item) && <p className="text-sm font-medium">Dates: {offeringDates(item)}</p>}
             {item.program_time && <p className="text-sm">Time: {programTimeLabel(item.program_time)}</p>}
-            <p className={isUpcoming(item) ? "font-bold text-[var(--muted)]" : "font-bold text-[var(--brand-navy)]"}>{offeringFeeLabel(item)}</p>
+            {item.kind !== "course" && <p className={isUpcoming(item) ? "font-bold text-[var(--muted)]" : "font-bold text-[var(--brand-navy)]"}>{offeringFeeLabel(item)}</p>}
           </div>
           {/* An upcoming offering still opens its details; it just cannot be enrolled in yet. */}
-          <Button fullWidth size="sm" variant={!enrollment && isUpcoming(item) ? "outline" : "primary"} onClick={() => openDetails(item)}>{enrollment ? enrollment.status === "pending_payment" ? "Complete enrollment" : "View enrollment" : isUpcoming(item) ? "Coming soon · View details" : item.kind === "course" ? "Enroll in Course" : "Register for Program"}</Button>
+          <Button fullWidth size="sm" variant={!enrollment && isUpcoming(item) ? "outline" : "primary"} onClick={() => openDetails(item)}>{item.kind === "course" ? enrollment?.status === "active" ? "Access course" : enrollment?.status === "access_denied" ? "Request access again" : enrollment ? "View access request" : isUpcoming(item) ? "Coming soon - View details" : "Request access" : enrollment ? enrollment.status === "pending_payment" ? "Complete enrollment" : "View enrollment" : isUpcoming(item) ? "Coming soon - View details" : "Register for Program"}</Button>
         </Card>;
       })}
     </div>}
     <dialog ref={dialog} onCancel={event => { if (busy) event.preventDefault(); else setSelected(null); }} aria-labelledby="enrollment-title" className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6 text-[var(--foreground)] shadow-xl backdrop:bg-black/50">
       {selected && <div className="space-y-5">
         <div className="flex items-start justify-between gap-4"><h2 id="enrollment-title" className="text-xl font-bold">{selected.title}</h2><Button variant="ghost" size="icon" aria-label="Close enrollment details" disabled={busy} onClick={() => setSelected(null)}><X size={20} /></Button></div>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">{selected.description}</p><p className="text-sm text-[var(--muted)]">{selected.duration}</p><p className="text-lg font-bold">{existing ? feeLabel(existing.amount, selected.currency) : offeringFeeLabel(selected)}</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">{selected.description}</p><p className="text-sm text-[var(--muted)]">{selected.duration}</p>{selected.kind !== "course" && <p className="text-lg font-bold">{existing ? feeLabel(existing.amount, selected.currency) : offeringFeeLabel(selected)}</p>}
         {selected.flyer_path && <ProgramFlyer path={selected.flyer_path} title={selected.title} />}
         {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}{message && <p role="status" className="text-sm text-[var(--success)]">{message}</p>}
-        {!existing ? <>
+        {selected.kind === "course" ? <CourseAccessDetails offering={selected} enrollment={existing} busy={busy} manager={manager} hasMember={hasMember} onRequest={()=>void confirmEnrollment()}/> : !existing ? <>
           {!manager && !registrationOpen(selected,today) && <p className="text-sm font-semibold text-[var(--muted)]">{isUpcoming(selected) ? "This offering is upcoming. Registration has not opened yet." : "Registration is closed for this program."}</p>}
           <p className="text-sm">{manager ? "Administrators manage enrollment records below. This view does not enroll an administrator as a member." : !registrationOpen(selected,today) ? isUpcoming(selected) ? "Dates and fee will be announced. Check back once registration opens." : "Please contact FSP or check again when registration opens." : selected.price === 0 ? "Registration is free and will be confirmed immediately." : "Your place will be marked pending payment. Enrollment becomes active after payment verification."}</p>
           {!hasMember && <p>Please complete your <Link href="/profile" className="underline">member profile</Link> before enrolling.</p>}

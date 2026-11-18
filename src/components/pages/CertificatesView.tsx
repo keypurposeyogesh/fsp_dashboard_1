@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import type { CertificateRow, MemberSummary } from "@/lib/data/catalog-types";
+import React, { useState, useEffect, useCallback } from "react";
 import { toDataError } from "@/lib/data/errors";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Award, Trophy, Download, Share2, ShieldCheck, RefreshCcw } from "lucide-react";
+import { Award, Download, ShieldCheck, RefreshCcw } from "lucide-react";
 import { logMemberActivity } from "@/lib/activity-log";
 
 export const CertificatesView: React.FC = () => {
@@ -16,14 +17,9 @@ export const CertificatesView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [member, setMember] = useState<any>(null);
-  const [certificates, setCertificates] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<CertificateRow[]>([]);
 
-  useEffect(() => {
-    fetchInitialData();
-  }, [user]);
-
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true); setLoadError(null);
@@ -31,29 +27,36 @@ export const CertificatesView: React.FC = () => {
       const { data: memberData, error: memberErr } = await supabase
         .from("members")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).returns<MemberSummary[]>()
         .maybeSingle();
 
       if (memberErr) throw memberErr;
       if (memberData) {
-        setMember(memberData);
 
         // Fetch certificates
         const { data: certsData, error: certsErr } = await supabase
           .from("certificates")
           .select("*, courses(title)")
-          .eq("member_id", memberData.id);
+          .eq("member_id", memberData.id).returns<CertificateRow[]>();
         if (certsErr) throw certsErr;
         setCertificates(certsData || []);
 
         await logMemberActivity("CERTIFICATE_VIEW");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLoadError(toDataError(err, "certificates").message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -72,7 +75,7 @@ export const CertificatesView: React.FC = () => {
             Your verified credentials, digital badges, and official FSP facilitator accreditations.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+        <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
           Refresh
         </Button>
       </div>

@@ -1,26 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { TaskRow, SubmissionRow, CourseRow } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { Badge } from "@/components/ui/Badge";
-import { Plus, Edit, Trash2, CheckCircle2, Download, X, RefreshCcw } from "lucide-react";
+import { Plus, Edit, Trash2, CheckCircle2, Download, X } from "lucide-react";
 
 export function TasksSection() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [courses, setCourses] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [courses, setCourses] = useState<CourseRow[]>([]);
 
   // Task creation/edit states
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
   const [taskCourseId, setTaskCourseId] = useState("");
@@ -28,27 +31,18 @@ export function TasksSection() {
 
   // Grading states
   const [isGradingModalOpen, setIsGradingModalOpen] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionRow | null>(null);
   const [grade, setGrade] = useState("");
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setCurrentUser(data.user);
-      }
-    });
-    fetchInitialData();
-  }, []);
-
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
       const [tasksRes, submissionsRes, coursesRes] = await Promise.all([
-        supabase.from("tasks").select("id, title, description, due_date, course_id, courses(title)"),
-        supabase.from("task_submissions").select("id, submitted_at, grade, file_url, tasks(title), members(first_name, last_name)"),
-        supabase.from("courses").select("id, title")
+        supabase.from("tasks").select("id, title, description, due_date, course_id, courses(title)").returns<TaskRow[]>(),
+        supabase.from("task_submissions").select("id, submitted_at, grade, file_url, tasks(title), members(first_name, last_name)").returns<SubmissionRow[]>(),
+        supabase.from("courses").select("id, title").returns<CourseRow[]>()
       ]);
 
       if (tasksRes.error) throw tasksRes.error;
@@ -58,12 +52,25 @@ export function TasksSection() {
       setTasks(tasksRes.data || []);
       setSubmissions(submissionsRes.data || []);
       setCourses(coursesRes.data || []);
-    } catch (err: any) {
-      console.error("Error loading task/grading data:", err.message);
+    } catch (err: unknown) {
+      console.error("Error loading task/grading data:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData, supabase.auth]);
 
   const handleAdminDownload = async (filePath: string) => {
     try {
@@ -75,8 +82,8 @@ export function TasksSection() {
       if (data?.signedUrl) {
         window.open(data.signedUrl, "_blank");
       }
-    } catch (err: any) {
-      alert("Failed to retrieve file download link: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to retrieve file download link: " + errorMessage(err));
     }
   };
 
@@ -134,14 +141,14 @@ export function TasksSection() {
 
       setIsTaskModalOpen(false);
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error saving task: " + err.message);
+    } catch (err: unknown) {
+      alert("Error saving task: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenEditTask = (task: any) => {
+  const handleOpenEditTask = (task: TaskRow) => {
     setSelectedTask(task);
     setTaskTitle(task.title || "");
     setTaskDesc(task.description || "");
@@ -171,14 +178,14 @@ export function TasksSection() {
       });
 
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error deleting task: " + err.message);
+    } catch (err: unknown) {
+      alert("Error deleting task: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenGrading = (sub: any) => {
+  const handleOpenGrading = (sub: SubmissionRow) => {
     setSelectedSubmission(sub);
     setGrade(sub.grade !== null ? String(sub.grade) : "");
     setIsGradingModalOpen(true);
@@ -210,8 +217,8 @@ export function TasksSection() {
 
       setIsGradingModalOpen(false);
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error grading submission: " + err.message);
+    } catch (err: unknown) {
+      alert("Error grading submission: " + errorMessage(err));
     } finally {
       setLoading(false);
     }

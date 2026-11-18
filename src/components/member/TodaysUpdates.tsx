@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useAsync } from "@/lib/useAsync";
+import { useEnrollmentRefresh } from "@/lib/enrollment-refresh";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { enrollmentError, uploadProgramFlyer, programTimeLabel } from "@/lib/data/enrollments";
@@ -37,10 +38,11 @@ export function ProgramFlyer({ path, title, onOpen }: { path: string; title: str
   return onOpen ? <button type="button" onClick={onOpen} aria-label={`View program details: ${title}`} className="block w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-navy)]">{poster}</button> : <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Open flyer for ${title}`}>{poster}</a>;
 }
 
-export function TodaysUpdates({ admin = false, announcementsOnly = false }: { admin?: boolean; announcementsOnly?: boolean }) {
+export function TodaysUpdates({ admin = false, announcementsOnly = false, limit }: { admin?: boolean; announcementsOnly?: boolean; limit?: number }) {
   const { role } = useAuth();
   const isManager = role === "admin" || role === "super_admin";
   const { data, error, loading, reload } = useAsync(loadUpdates, []);
+  useEnrollmentRefresh(reload);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [date, setDate] = useState("");
@@ -99,7 +101,7 @@ export function TodaysUpdates({ admin = false, announcementsOnly = false }: { ad
   }
   const field = "w-full rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3 text-sm";
   return <section className="my-6 space-y-4" aria-labelledby="todays-updates-title">
-    <div className="flex items-center justify-between gap-3"><div><h2 id="todays-updates-title" className="text-xl font-bold">Today&apos;s Updates</h2><p className="mt-1 text-sm text-[var(--muted)]">Upcoming programs and announcements from FSP.</p></div><Button size="sm" variant="outline" disabled={loading || busy} onClick={reload}>Refresh</Button></div>
+    <div className="flex items-center justify-between gap-3"><div><h2 id="todays-updates-title" className="text-xl font-bold">Today&apos;s Updates</h2><p className="mt-1 text-sm text-[var(--muted)]">Upcoming programs and announcements from FSP.</p></div><Button size="sm" variant="outline" disabled={loading || busy} onClick={reload} data-action="refresh">Refresh</Button></div>
     {admin && <Card className="p-5"><form onSubmit={publish} className="space-y-4">
       <label className="block text-sm font-medium">Update title<input className={field} required maxLength={150} value={title} onChange={event => setTitle(event.target.value)} /></label>
       <label className="block text-sm font-medium">Program details / message<textarea className={field} rows={5} required maxLength={5000} value={message} onChange={event => setMessage(event.target.value)} /></label>
@@ -111,7 +113,7 @@ export function TodaysUpdates({ admin = false, announcementsOnly = false }: { ad
     {error && <p role="alert" className="text-sm text-[var(--danger)]">Updates couldn&apos;t be loaded. {error.message} {admin && "Check that migrations 010–013 have been applied in Supabase."}</p>}
     {loading && !data && <p role="status">Loading updates…</p>}
     {data?.length === 0 && <Card className="p-5 text-sm text-[var(--muted)]">No updates yet. Upcoming program details will appear here.</Card>}
-    <div className="grid gap-4 md:grid-cols-2">{data?.filter(update => (!announcementsOnly || !update.offering_id) && (admin || (update.is_published && (!update.expires_at || Date.parse(update.expires_at) > now)))).map(update => <Card key={update.id} className="space-y-4 p-5">
+    <div className="grid gap-4 md:grid-cols-2">{data?.filter(update => (!announcementsOnly || !update.offering_id) && (admin || (update.is_published && (!update.expires_at || Date.parse(update.expires_at) > now)))).slice(0, limit).map(update => <Card key={update.id} className="space-y-4 p-5">
       <div><p className="text-xs text-[var(--muted)]">Posted {new Date(update.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}{!update.is_published && " · Archived"}</p><h3 className="mt-1 text-lg font-bold">{update.title}</h3></div>
       {update.flyer_path && <ProgramFlyer path={update.flyer_path} title={update.title} />}<p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{update.message}</p>
       {update.program_date && <p className="text-sm font-medium">Program date: {new Date(`${update.program_date}T00:00:00`).toLocaleDateString("en-IN")}</p>}{update.program_time && <p className="text-sm">Time: {programTimeLabel(update.program_time)}</p>}{update.location && <p className="text-sm">Venue: {update.location}</p>}

@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { EventRow } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
@@ -18,21 +21,12 @@ export function FeesSection() {
   const [renewalAmount, setRenewalAmount] = useState("3000");
   const [renewalCurrency, setRenewalCurrency] = useState("INR");
 
-  const [events, setEvents] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [events, setEvents] = useState<Pick<EventRow, "id" | "title" | "fee" | "event_registrations">[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [saveMsg, setSaveMsg] = useState("");
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setCurrentUser(data.user);
-      }
-    });
-    fetchInitialData();
-  }, []);
-
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
       const [settingsRes, eventsRes] = await Promise.all([
@@ -47,7 +41,7 @@ export function FeesSection() {
               id
             )
           `)
-          .order("start_time", { ascending: true })
+          .order("start_time", { ascending: true }).returns<EventRow[]>()
       ]);
 
       if (settingsRes.error) throw settingsRes.error;
@@ -60,12 +54,25 @@ export function FeesSection() {
       }
 
       setEvents(eventsRes.data || []);
-    } catch (err: any) {
-      console.error("Error loading fee settings:", err.message);
+    } catch (err: unknown) {
+      console.error("Error loading fee settings:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData, supabase.auth]);
 
   const handleSaveRenewalFee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,8 +107,8 @@ export function FeesSection() {
 
       setSaveMsg("Membership renewal fee updated successfully!");
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error saving renewal fee: " + err.message);
+    } catch (err: unknown) {
+      alert("Error saving renewal fee: " + errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -131,8 +138,8 @@ export function FeesSection() {
       });
 
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error saving event fee: " + err.message);
+    } catch (err: unknown) {
+      alert("Error saving event fee: " + errorMessage(err));
     }
   };
 
@@ -190,7 +197,7 @@ export function FeesSection() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-bold">Event Fees</CardTitle>
-              <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+              <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
                 Refresh
               </Button>
             </CardHeader>
@@ -222,7 +229,7 @@ export function FeesSection() {
   );
 }
 
-function EventFeeEditor({ event, onSave }: { event: any; onSave: (value: string) => void }) {
+function EventFeeEditor({ event, onSave }: { event: Pick<EventRow, "id" | "title" | "fee" | "event_registrations">; onSave: (value: string) => void }) {
   const [value, setValue] = useState(event.fee != null ? String(event.fee) : "");
   const [saving, setSaving] = useState(false);
 

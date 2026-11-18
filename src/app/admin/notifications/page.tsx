@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { NotificationRow, UserSummary } from "@/lib/data/catalog-types";
+import type { User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
@@ -8,37 +11,28 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
-import { Plus, Bell, Send, X, RefreshCcw } from "lucide-react";
+import { Send, X, RefreshCcw } from "lucide-react";
 
 export default function AdminNotifications() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [users, setUsers] = useState<UserSummary[]>([]);
 
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [targetUserId, setTargetUserId] = useState("all");
-  const [notifType, setNotifType] = useState<any>("info");
+  const [notifType, setNotifType] = useState<string>("info");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setCurrentUser(data.user);
-      }
-    });
-    fetchInitialData();
-  }, []);
-
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
       const [notifsRes, usersRes] = await Promise.all([
-        supabase.from("notifications").select("id, type, payload, created_at, users!notifications_user_id_fkey(email)").order("created_at", { ascending: false }).limit(50),
-        supabase.from("users").select("id, name, email")
+        supabase.from("notifications").select("id, type, payload, created_at, users!notifications_user_id_fkey(email)").order("created_at", { ascending: false }).limit(50).returns<NotificationRow[]>(),
+        supabase.from("users").select("id, name, email").returns<UserSummary[]>()
       ]);
 
       if (notifsRes.error) throw notifsRes.error;
@@ -46,12 +40,25 @@ export default function AdminNotifications() {
 
       setNotifications(notifsRes.data || []);
       setUsers(usersRes.data || []);
-    } catch (err: any) {
-      console.error("Error loading notifications:", err.message);
+    } catch (err: unknown) {
+      console.error("Error loading notifications:", errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+    });
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData, supabase.auth]);
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,8 +117,8 @@ export default function AdminNotifications() {
       setMessage("");
       setTargetUserId("all");
       await fetchInitialData();
-    } catch (err: any) {
-      alert("Error broadcasting notification: " + err.message);
+    } catch (err: unknown) {
+      alert("Error broadcasting notification: " + errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -134,7 +141,7 @@ export default function AdminNotifications() {
       <Card>
         <CardHeader className="flex flex-row justify-between items-center pb-2">
           <CardTitle className="text-lg font-bold">Recent Sent Notifications</CardTitle>
-          <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+          <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
             Refresh
           </Button>
         </CardHeader>

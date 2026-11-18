@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { errorMessage } from "@/lib/error-message";
+import type { MemberSummary, TaskRow, SubmissionRow } from "@/lib/data/catalog-types";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -24,22 +26,18 @@ export const TasksView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [member, setMember] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [member, setMember] = useState<MemberSummary | null>(null);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
 
   // Submissions Modal State
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchInitialData();
-  }, [user]);
-
-  async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true); setLoadError(null);
@@ -47,7 +45,7 @@ export const TasksView: React.FC = () => {
       const { data: memberData, error: memberErr } = await supabase
         .from("members")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).returns<MemberSummary[]>()
         .maybeSingle();
 
       if (memberErr) throw memberErr;
@@ -57,7 +55,7 @@ export const TasksView: React.FC = () => {
         // Fetch all tasks
         const { data: tasksData, error: tasksErr } = await supabase
           .from("tasks")
-          .select("*, courses(title)");
+          .select("*, courses(title)").returns<TaskRow[]>();
         if (tasksErr) throw tasksErr;
         setTasks(tasksData || []);
 
@@ -65,19 +63,27 @@ export const TasksView: React.FC = () => {
         const { data: subsData, error: subsErr } = await supabase
           .from("task_submissions")
           .select("*")
-          .eq("member_id", memberData.id);
+          .eq("member_id", memberData.id).returns<SubmissionRow[]>();
         if (subsErr) throw subsErr;
         setSubmissions(subsData || []);
 
         await logMemberActivity("TASK_VIEW");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // toDataError logs the raw error for developers; no second console.error.
       setLoadError(toDataError(err, "tasks").message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void fetchInitialData();
+    });
+    return () => { cancelled = true; };
+  }, [fetchInitialData]);
 
   // Sanitize Filename
   const sanitizeFilename = (name: string) => {
@@ -127,7 +133,7 @@ export const TasksView: React.FC = () => {
       const storagePath = `${user.id}/${selectedTask.id}/${Date.now()}_${sanitized}`;
 
       // Upload to Supabase Storage
-      const { data, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from("task-submissions")
         .upload(storagePath, file, { cacheControl: "3600", upsert: true });
 
@@ -169,9 +175,9 @@ export const TasksView: React.FC = () => {
       setUploadStatus("");
       await fetchInitialData();
       alert("Syllabus assignment uploaded and submitted successfully!");
-    } catch (err: any) {
-      alert("Upload failed: " + err.message);
-      setUploadStatus("Error: " + err.message);
+    } catch (err: unknown) {
+      alert("Upload failed: " + errorMessage(err));
+      setUploadStatus("Error: " + errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -188,8 +194,8 @@ export const TasksView: React.FC = () => {
       if (data?.signedUrl) {
         window.open(data.signedUrl, "_blank");
       }
-    } catch (err: any) {
-      alert("Failed to retrieve file download link: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to retrieve file download link: " + errorMessage(err));
     }
   };
 
@@ -221,7 +227,7 @@ export const TasksView: React.FC = () => {
             Complete your coursework activities, upload deliverables, and track evaluation grades.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />}>
+        <Button variant="outline" size="sm" onClick={fetchInitialData} icon={<RefreshCcw className="w-4 h-4" />} data-action="refresh">
           Refresh
         </Button>
       </div>
@@ -337,7 +343,7 @@ export const TasksView: React.FC = () => {
                       </Button>
                     ) : (
                       <div className="flex gap-2 w-full">
-                        <Button variant="outline" size="sm" fullWidth onClick={() => handleDownloadFile(record.file_url)} icon={<Download className="w-3.5 h-3.5" />}>
+                        <Button variant="outline" size="sm" fullWidth onClick={() => { if (record) void handleDownloadFile(record.file_url); }} icon={<Download className="w-3.5 h-3.5" />}>
                           View Uploaded File
                         </Button>
                         {status === "Submitted" && (

@@ -49,11 +49,12 @@ export interface OfferingEnrollment {
   member_id: string;
   amount: number;
   currency: string;
-  status: "pending_payment" | "payment_review" | "active";
+  status: "pending_payment" | "payment_review" | "active" | "access_requested" | "access_denied";
   payment_reference: string | null;
   receipt_path: string | null;
   review_note: string | null;
   created_at: string;
+  updated_at?: string;
   offerings: Offering;
   members?: { first_name: string | null; last_name: string | null; user_id: string };
 }
@@ -76,7 +77,10 @@ export const offeringFeeLabel = (item: Offering) =>
 
 export const statusLabel = (status: OfferingEnrollment["status"]) => ({
   pending_payment: "Pending payment", payment_review: "Payment under review", active: "Active",
+  access_requested: "Awaiting approval", access_denied: "Access declined",
 })[status];
+
+export const courseAccessLabel = (status: OfferingEnrollment['status']) => status === 'active' ? 'Active' : status === 'access_denied' ? 'Access declined' : 'Awaiting approval';
 
 export function enrollmentError(error: unknown): string {
   const value = error as { message?: string; code?: string };
@@ -104,17 +108,20 @@ export async function loadEnrollmentData(admin = false) {
   const results = await Promise.all([
     db.from("offerings").select("*").order("sort_order"),
     db.from("offering_enrollments").select(admin ? "*, offerings(*), members(first_name,last_name,user_id)" : "*, offerings(*)").order("created_at", { ascending: false }),
-    db.from("enrollment_payment_settings").select("instructions").eq("id", 1).single(),
+    db.from("enrollment_payment_settings").select("instructions").eq("id", 1).maybeSingle(),
   ]);
-  for (const result of results) if (result.error) throw result.error;
+  // Course access does not depend on payment setup. Programs already show a
+  // contact-support message when official payment instructions are unavailable.
+  for (const result of results.slice(0, 2)) if (result.error) throw result.error;
+  if (results[2].error) console.warn("Payment instructions unavailable", results[2].error.code);
   return {
     offerings: results[0].data as unknown as Offering[],
     enrollments: results[1].data as unknown as OfferingEnrollment[],
-    instructions: (results[2].data as unknown as { instructions: string }).instructions,
+    instructions: (results[2].data as unknown as { instructions: string } | null)?.instructions ?? "",
   };
 }
 
-export async function enrollmentAction(name: "enroll_offering" | "submit_enrollment_payment" | "review_enrollment_payment", args: Record<string, unknown>) {
+export async function enrollmentAction(name: "enroll_offering" | "submit_enrollment_payment" | "review_enrollment_payment" | "request_course_access" | "review_course_access", args: Record<string, unknown>) {
   const { data, error } = await createClient().rpc(name, args);
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;

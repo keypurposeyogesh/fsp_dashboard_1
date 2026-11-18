@@ -9,6 +9,8 @@ import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/components/member/MemberAvatar";
 import { ROLE_LABEL } from "@/lib/status";
+import { roleHome } from "@/lib/auth-redirect";
+import { accountSettingsPath, accountNotificationsPath, notificationDestination } from "@/lib/navigation";
 import { groupsForRole, SETTINGS_LINK } from "@/components/shell/nav";
 import { useShell } from "@/components/shell/AppShell";
 import { getMyNotifications, markAllNotificationsRead } from "@/lib/data/member";
@@ -35,6 +37,7 @@ function useDismiss(open: boolean, close: () => void) {
 }
 
 export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
+  const {role,user}=useAuth();
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b-[3px] border-[var(--brand-yellow)] bg-white/95 px-3 backdrop-blur sm:gap-3 sm:px-6 lg:px-8">
       <button
@@ -45,13 +48,13 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
       >
         <Menu className="h-5 w-5" />
       </button>
-      <Link href="/dashboard" className="lg:hidden" aria-label="FSP home">
+      <Link href={roleHome(role)} className="lg:hidden" aria-label="FSP home">
         <Logo variant="icon" size="sm" />
       </Link>
       <GlobalSearch />
       <div className="ml-auto flex items-center gap-1 sm:gap-2">
-        <NotificationBell />
-        <UserMenu />
+        {user && <NotificationBell key={user.id} />}
+        <UserMenu key={user?.id ?? 'anonymous'} />
       </div>
     </header>
   );
@@ -71,7 +74,7 @@ function GlobalSearch() {
   const isAdmin = role === "admin" || role === "super_admin";
 
   const results = useMemo(() => {
-    const pages = [...groupsForRole(role).flatMap((g) => g.links.map((l) => ({ ...l, group: g.label ?? "Main" }))), { ...SETTINGS_LINK, group: "Account" }];
+    const pages = [...groupsForRole(role).flatMap((g) => g.links.map((l) => ({ ...l, group: g.label ?? "Main" }))), { ...SETTINGS_LINK, href: accountSettingsPath(role), group: "Account" }];
     const term = q.trim().toLowerCase();
     const matched = term
       ? pages.filter((p) => p.label.toLowerCase().includes(term) || p.group.toLowerCase().includes(term))
@@ -165,6 +168,7 @@ function GlobalSearch() {
 }
 
 function NotificationBell() {
+  const {role}=useAuth();
   const { unread, refreshUnread } = useShell();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[] | null>(null);
@@ -182,9 +186,7 @@ function NotificationBell() {
     setOpen(next);
     if (next) {
       setFailed(false);
-      getMyNotifications(6)
-        .then(setItems)
-        .catch(() => setFailed(true));
+      setItems(null);
     }
   };
 
@@ -236,7 +238,7 @@ function NotificationBell() {
                 {items.map((n) => (
                   <li key={n.id}>
                     <Link
-                      href={n.payload?.link || "/notifications"}
+                      href={notificationDestination(role,n.payload?.link)}
                       onClick={() => setOpen(false)}
                       className="flex gap-3 border-b border-[var(--card-border)] px-4 py-3 last:border-0 hover:bg-[var(--muted-light)]/60"
                     >
@@ -260,7 +262,7 @@ function NotificationBell() {
             )}
           </div>
           <Link
-            href="/notifications"
+            href={accountNotificationsPath(role)}
             onClick={() => setOpen(false)}
             className="block border-t border-[var(--card-border)] px-4 py-3 text-center text-sm font-medium text-[var(--brand-navy)] hover:bg-[var(--muted-light)]/60"
           >

@@ -1,30 +1,28 @@
-"use client";
-import { useEffect } from "react";
-import { useAuth } from "@/lib/auth";
-import { useAsync } from "@/lib/useAsync";
-import { getMyProfile,getMyMemberships } from "@/lib/data/member";
-import { currentMembership } from "@/components/member/workflow";
-import { MembershipCard } from "@/components/member/MembershipCard";
-import { MemberAvatar } from "@/components/member/MemberAvatar";
-import { CoursesView } from "@/components/pages/CoursesView";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { enrollmentError } from "@/lib/data/enrollments";
-import { DailyCourseProgress } from "@/components/member/DailyCourseProgress";
-import { TodaysUpdates } from "@/components/member/TodaysUpdates";
+﻿"use client";
+import Link from 'next/link';
+import { ArrowRight, Compass, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+import { useAsync } from '@/lib/useAsync';
+import { getMyProfile } from '@/lib/data/member';
+import { DailyCourseProgress } from './DailyCourseProgress';
+import { ChallengeCommunity } from './ChallengeCommunity';
+import { ChallengeRewards } from './ChallengeRewards';
+import { TodaysUpdates } from './TodaysUpdates';
+import { CoursesView } from '@/components/pages/CoursesView';
+import styles from './Overview.module.css';
 
-async function loadMembership() {
-  const profile = await getMyProfile();
-  return { profile, memberships: profile ? await getMyMemberships(profile.id) : [] };
-}
 export function UnifiedDashboard() {
-  const { user,role } = useAuth();
-  const { data,error,loading,reload } = useAsync(loadMembership,[user?.id],Boolean(user));
-  useEffect(() => { const timer = setInterval(() => { if (document.visibilityState !== 'hidden') reload(); },60000); return () => clearInterval(timer); },[reload]);
-  const manager = role === "admin" || role === "super_admin";
-  return <div className="space-y-8 font-sans"><header><h1 className="fsp-dot text-3xl font-semibold tracking-tight">FSP Dashboard</h1><p className="mt-2 text-sm text-[var(--muted)]">Your account, scheduled programs, and enrollments in one place.</p></header>
-    <section className="space-y-4"><div className="flex items-center justify-between"><h2 className="fsp-dot text-xl font-bold">Membership Overview</h2><Button variant="outline" size="sm" disabled={loading} onClick={reload}>Refresh membership</Button></div><div className="grid items-start gap-5 md:grid-cols-2"><Card className="space-y-4 p-5"><div className="flex items-center gap-3"><MemberAvatar src={user?.avatar_url} name={user?.name ?? ""} size={56}/><div><h3 className="font-bold">{user?.name ?? "Your account"}</h3><p className="break-all text-sm">{user?.email}</p><p className="text-sm capitalize">{role?.replace("_"," ")}</p></div></div>{manager && <p className="text-sm text-[var(--muted)]">Administrator access is based on your account role. A personal paid membership is not required to manage enrollments.</p>}{error && <p role="alert" className="text-sm text-[var(--danger)]">{enrollmentError(error)}</p>}<DailyCourseProgress key={user?.id} memberId={data?.profile?.user_id === user?.id ? data?.profile?.id : undefined}/></Card>{loading && !data ? <Card className="p-5" role="status">Loading membership…</Card> : data ? <MembershipCard compact membership={currentMembership(data.memberships)} memberNumber={data.profile?.member_number} memberName={user?.name}/> : <Card className="p-5">Membership details unavailable.</Card>}</div></section>
-    <CoursesView dashboard />
-    <details className="rounded-xl border border-[var(--card-border)] p-4"><summary className="cursor-pointer font-semibold">Other FSP announcements</summary><TodaysUpdates announcementsOnly /></details>
+  const { user } = useAuth();
+  const account = useAsync(getMyProfile,[user?.id],Boolean(user));
+  const memberId = account.data?.user_id === user?.id ? account.data?.id : undefined;
+  const refresh = () => { account.reload(); window.dispatchEvent(new Event('fsp-enrollment-changed')); window.dispatchEvent(new Event('fsp-learning-changed')); };
+  return <div className={styles.overview}>
+    <header className={styles.heading}><div><p className={styles.eyebrow}>YOUR 30-DAY CHALLENGE</p><h1>Small steps. Lasting progress<span>.</span></h1><p>30 tasks, 40 days, and up to 3,000 discount points. Keep going at your pace.</p></div><button type="button" onClick={refresh} className={styles.refresh} aria-label="Refresh challenge" disabled={account.loading} data-action="refresh"><RefreshCw size={17}/><span>Refresh</span></button></header>
+    {account.error && <div className={styles.error} role="alert">{account.error.message}<button onClick={refresh}>Try again</button></div>}
+    <div className={styles.frontGrid}><div className={styles.frontMain}>
+      <section id="my-learning" className={styles.learning}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>YOUR NEXT STEP</p><h2>Continue your challenge</h2></div><Link href="/tasks">All tasks<ArrowRight size={16}/></Link></div><div className={styles.learningList}><DailyCourseProgress key={user?.id} memberId={memberId} compact/></div></section>
+      {account.data && <ChallengeRewards key={user?.id}/>}
+      <details className={styles.discover}><summary><span className={styles.discoverIcon}><Compass size={20}/></span><span><strong>Discover more FSP programs</strong><span>Explore courses, gatherings, and new challenges</span></span><span className={styles.discoverAction}>Explore<ArrowRight size={16}/></span></summary><div className={styles.catalogue}><CoursesView dashboard/></div></details>
+    </div><aside className={styles.frontUpdates} aria-label="Latest FSP updates"><TodaysUpdates limit={3}/>{account.data && <ChallengeCommunity compact/>}</aside></div>
   </div>;
 }

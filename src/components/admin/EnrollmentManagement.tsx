@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/Badge";
 import { createClient } from "@/lib/supabase/client";
 import { PaymentReceiptLink } from "@/components/member/PaymentReceiptLink";
 import { ProgramFlyer } from "@/components/member/TodaysUpdates";
+import { CourseAccessReview } from "./CourseAccessReview";
 import { DailyTaskEditor } from "@/components/admin/DailyTaskEditor";
+import { notifyEnrollmentChanged, useEnrollmentRefresh } from "@/lib/enrollment-refresh";
 import { uploadProgramFlyer } from "@/lib/data/enrollments";
 import { enrollmentAction, enrollmentError, feeLabel, loadEnrollmentData, statusLabel, type Offering, type OfferingEnrollment } from "@/lib/data/enrollments";
 
@@ -107,7 +109,9 @@ export function PaymentReview({ row, onReviewed }: { row: OfferingEnrollment; on
     if (busy || (approve && !verified)) return;
     setBusy(true); setError("");
     try {
-      await enrollmentAction("review_enrollment_payment", { p_enrollment_id: row.id, p_approve: approve, p_note: note.trim() });
+      const reviewed = await enrollmentAction("review_enrollment_payment", { p_enrollment_id: row.id, p_approve: approve, p_note: note.trim() });
+      if (reviewed.id !== row.id || reviewed.status !== (approve ? "active" : "pending_payment")) throw new Error("The approval could not be confirmed. Refresh and check this enrollment.");
+      notifyEnrollmentChanged();
       await onReviewed();
     } catch (err) { setError(enrollmentError(err)); }
     finally { setBusy(false); }
@@ -132,7 +136,7 @@ export function EnrollmentManagement({ paymentsOnly = false, setupOnly = false, 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState("payment_review");
+  const [filter, setFilter] = useState("awaiting_review");
   const refresh = useCallback(async () => {
     try {
       const data = await loadEnrollmentData(true);
@@ -142,6 +146,7 @@ export function EnrollmentManagement({ paymentsOnly = false, setupOnly = false, 
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void Promise.resolve().then(() => refresh()); }, [refresh]);
+  useEnrollmentRefresh(refresh, !setupOnly);
   async function saveInstructions(event: React.FormEvent) {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     try {
@@ -151,17 +156,18 @@ export function EnrollmentManagement({ paymentsOnly = false, setupOnly = false, 
     } catch (err) { setError(enrollmentError(err)); }
     finally { setSaving(false); }
   }
-  const rows = enrollments.filter(row => filter === "all" || row.status === filter);
+  const rows = enrollments.filter(row => filter === "all" || (filter === "awaiting_review" ? row.status === "access_requested" || row.status === "payment_review" : row.status === filter)).sort((a,b) => Number(b.status === "payment_review" || b.status === "access_requested") - Number(a.status === "payment_review" || a.status === "access_requested") || Date.parse(b.updated_at ?? b.created_at) - Date.parse(a.updated_at ?? a.created_at));
   return <div className="space-y-6">
-    <div className="flex flex-wrap justify-between gap-4"><div><h1 className="fsp-dot text-3xl font-black">{setupOnly ? "Program Setup" : paymentsOnly ? "Payments & Approvals" : "Courses & Enrollments"}</h1><p className="mt-2 text-sm text-[var(--muted)]">Manage fees, payment instructions, and member registrations.</p></div><Button variant="outline" size="sm" disabled={loading || saving} onClick={() => { setLoading(true); void refresh(); }}>Refresh</Button></div>
+    <div className="flex flex-wrap justify-between gap-4"><div><h1 className="fsp-dot text-3xl font-black">{setupOnly ? "Program Setup" : paymentsOnly ? "Payments & Approvals" : "Courses & Access Approvals"}</h1><p className="mt-2 text-sm text-[var(--muted)]">Manage fees, payment instructions, and member registrations.</p></div><Button variant="outline" size="sm" disabled={loading || saving} onClick={() => { setLoading(true); void refresh(); }} data-action="refresh">Refresh</Button></div>
     {error && <p role="alert" className="rounded-xl border border-[var(--danger)] p-4 text-sm text-[var(--danger)]">{error}</p>}{message && <p role="status" className="text-sm text-[var(--success)]">{message}</p>}
     {loading ? <p role="status">Loading enrollments…</p> : <>
+      {!setupOnly && <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="fsp-dot text-xl font-bold">Enrollment approvals <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">{enrollments.filter(row => (row.status === "payment_review" || row.status === "access_requested")).length} awaiting review</span></h2><label className="text-sm">Status <select className="ml-2 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-2" value={filter} onChange={event => setFilter(event.target.value)}><option value="awaiting_review">Awaiting approval</option><option value="access_requested">Course access requests</option><option value="access_denied">Access declined</option><option value="payment_review">Program payment review</option><option value="pending_payment">Pending payment</option><option value="active">Active</option><option value="all">All</option></select></label></div>
+        {!rows.length && <Card className="p-5 text-sm text-[var(--muted)]">No enrollments in this category.</Card>}
+        {rows.map(row => <Card key={row.id} className="p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-bold">{row.offerings.title}</h3><p className="mt-1 text-sm">{[row.members?.first_name, row.members?.last_name].filter(Boolean).join(" ") || "Member"} · {row.offerings.kind !== "course" && feeLabel(row.amount, row.currency)}</p><p className="mt-1 text-xs text-[var(--muted)]">Enrollment: {row.id} · {new Date(row.created_at).toLocaleDateString("en-IN")}</p></div><Badge variant={row.status === "active" ? "success" : "warning"}>{statusLabel(row.status)}</Badge></div>{row.review_note && <p className="mt-3 text-sm">Review note: {row.review_note}</p>}{row.status === "access_requested" && <CourseAccessReview row={row} onReviewed={refresh}/>} {row.status === "payment_review" && row.offerings.kind !== "course" && <PaymentReview row={row} onReviewed={refresh} />}</Card>)}
+      </section>}
       {!paymentsOnly && <Card className="space-y-4 p-5"><h2 className="fsp-dot text-xl font-bold">Payment instructions</h2><form onSubmit={saveInstructions} className="space-y-3"><label htmlFor="payment-instructions" className="block text-sm">Provide official UPI / bank details, payee name, and a support contact. Members see these after confirming a paid enrollment.</label><textarea id="payment-instructions" className={fieldStyle} rows={5} maxLength={4000} value={instructions} onChange={event => setInstructions(event.target.value)} placeholder="Enter your official payment details" /><Button size="sm" type="submit" disabled={saving || Boolean(error)}>{saving ? "Saving…" : "Save instructions"}</Button></form></Card>}
       {!paymentsOnly && <section className="space-y-4"><div className="flex items-center justify-between gap-3"><h2 className="fsp-dot text-xl font-bold">Programs &amp; Updates</h2><Button size="sm" variant="outline" onClick={() => setShowAdd(value => !value)}>{showAdd ? "Cancel" : "Add Program"}</Button></div><p className="text-sm text-[var(--muted)]">Create or update a program and flyer. Available programs are shared automatically on all member dashboards.</p>{showAdd && <OfferingEditor key={draft.id} offering={draft} newProgram onSaved={async () => { await refresh(); await onProgramChanged?.(); setShowAdd(false); setDraft(previous => ({ ...previous, id: crypto.randomUUID() })); setMessage("Program published to the catalog and all member dashboards."); }} />}<div className="grid gap-4 md:grid-cols-2">{offerings.map(offering => <OfferingEditor key={JSON.stringify(offering)} offering={offering} onSaved={async () => { await refresh(); await onProgramChanged?.(); setMessage("Program updated in the catalog and member dashboard updates."); }} />)}</div></section>}
-      {!setupOnly && <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="fsp-dot text-xl font-bold">Enrollments</h2><label className="text-sm">Status <select className="ml-2 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-2" value={filter} onChange={event => setFilter(event.target.value)}><option value="payment_review">Awaiting review</option><option value="pending_payment">Pending payment</option><option value="active">Active</option><option value="all">All</option></select></label></div>
-        {!rows.length && <Card className="p-5 text-sm text-[var(--muted)]">No enrollments in this category.</Card>}
-        {rows.map(row => <Card key={row.id} className="p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-bold">{row.offerings.title}</h3><p className="mt-1 text-sm">{[row.members?.first_name, row.members?.last_name].filter(Boolean).join(" ") || "Member"} · {feeLabel(row.amount, row.currency)}</p><p className="mt-1 text-xs text-[var(--muted)]">Enrollment: {row.id} · {new Date(row.created_at).toLocaleDateString("en-IN")}</p></div><Badge variant={row.status === "active" ? "success" : "warning"}>{statusLabel(row.status)}</Badge></div>{row.review_note && <p className="mt-3 text-sm">Review note: {row.review_note}</p>}{row.status === "payment_review" && <PaymentReview row={row} onReviewed={refresh} />}</Card>)}
-      </section>}
+
     </>}
   </div>;
 }

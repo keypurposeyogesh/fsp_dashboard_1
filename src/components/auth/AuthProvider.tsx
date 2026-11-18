@@ -85,8 +85,8 @@ const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<AuthUser & 
     console.error('Failed to fetch user profile', userErr.message, userErr);
   }
 
-  // If no matching public.users row, trigger self-healing sync via RPC
-  if (!userData) {
+  // Repair either missing profile record, including users with no member row.
+  if (!userData || !memberProfile) {
     try {
       const { data: syncRes, error: syncErr } = await supabase.rpc('sync_current_user');
       if (!syncErr && syncRes?.success) {
@@ -177,15 +177,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
   const [membershipStatus, setMembershipStatus] = useState<MembershipState | null>(null);
   const profileRequests = useRef(new Map<string, ReturnType<typeof fetchUserProfile>>());
+  const authEpoch = useRef(0);
+  const authIdentity = useRef<string | null>(null);
 
   // Public refresh: re-reads the current session user. (Calling the internal
   // refreshUser without a user clears the session state, i.e. a UI sign-out.)
   const refreshCurrentUser = async () => {
+    const epoch = authEpoch.current;
     const { data } = await supabase.auth.getUser();
-    if (data.user) await refreshUser(data.user);
+    if (epoch === authEpoch.current && data.user) await refreshUser(data.user);
   };
 
   const refreshUser = async (supabaseUser?: SupabaseUser) => {
+    const epoch = authEpoch.current;
     try {
       if (!supabaseUser) {
         setUser(null);
@@ -205,6 +209,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       finally {
         if (profileRequests.current.get(supabaseUser.id) === request) profileRequests.current.delete(supabaseUser.id);
       }
+      if (epoch !== authEpoch.current) return;
       setUser({
         id: profile.id,
         email: profile.email,
@@ -215,6 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setRole(profile.role);
       setMembershipStatus(profile.membershipStatus);
     } catch (e) {
+      if (epoch !== authEpoch.current) return;
       console.error('Error refreshing user', e);
       setUser(null);
       setRole(null);
@@ -224,16 +230,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    const invalidateAuth = () => { authEpoch.current++; };
     const pending = new Set<ReturnType<typeof setTimeout>>();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      const epoch = ++authEpoch.current;
+      pending.forEach(clearTimeout);
+      pending.clear();
+      const identity = newSession?.user?.id ?? null;
+      if (identity !== authIdentity.current) {
+        authIdentity.current = identity;
+        profileRequests.current.clear();
+        setUser(null);
+        setRole(null);
+        setMembershipStatus(null);
+        setLoading(Boolean(identity));
+      }
       setSession(newSession);
       if (newSession?.user) {
         // Leave the auth callback before invoking Supabase again: it holds
         // the session lock while notifying listeners.
         const timer = setTimeout(() => {
           pending.delete(timer);
-          if (!mounted) return;
-          void refreshUser(newSession.user).finally(() => { if (mounted) setLoading(false); });
+          if (!mounted || epoch !== authEpoch.current) return;
+          void refreshUser(newSession.user).finally(() => { if (mounted && epoch === authEpoch.current) setLoading(false); });
         }, 0);
         pending.add(timer);
       } else {
@@ -249,6 +268,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mounted = false;
+      invalidateAuth();
       pending.forEach(clearTimeout);
       subscription.unsubscribe();
     };
@@ -303,6 +323,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    authEpoch.current++;
+    profileRequests.current.clear();
     setLoading(true);
     await logMemberActivity("AUTH_LOGOUT");
     const { error } = await supabase.auth.signOut();

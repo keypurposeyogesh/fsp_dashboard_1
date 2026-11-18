@@ -2,7 +2,7 @@
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ProgramFlyer } from "@/components/member/TodaysUpdates";
-import { feeLabel, offeringDates, programTimeLabel, statusLabel, type Offering, type OfferingEnrollment } from "@/lib/data/enrollments";
+import { feeLabel, courseAccessLabel, offeringDates, programTimeLabel, statusLabel, type Offering, type OfferingEnrollment } from "@/lib/data/enrollments";
 import { scheduledPrograms, modeLabel } from "@/lib/program-schedule";
 
 export function ProgramFacts({ item }: { item: Offering }) {
@@ -12,15 +12,15 @@ export function ProgramFacts({ item }: { item: Offering }) {
 }
 function ProgramCard({ item, enrollment, today, onOpen }: { item: Offering; enrollment?: OfferingEnrollment; today?: boolean; date: string; manager: boolean; onOpen: (item: Offering) => void }) {
   return <Card className="flex h-full min-w-0 flex-col gap-4 p-4 sm:p-5">
-    <div className="flex flex-wrap justify-between gap-2">{today && <Badge variant="secondary">TODAY</Badge>}{enrollment && <Badge variant={enrollment.status === "active" ? "success" : "warning"}>{statusLabel(enrollment.status)}</Badge>}</div>
-    {item.kind !== "course" && (item.flyer_path ? <ProgramFlyer path={item.flyer_path} title={item.title} onOpen={()=>onOpen(item)}/> : <button type="button" onClick={()=>onOpen(item)} className="rounded-xl bg-[var(--muted-light)] p-10 text-center text-sm text-[var(--muted)]" aria-label={`View program details: ${item.title}`}>Poster coming soon · View details</button>)}
+    <div className="flex flex-wrap justify-between gap-2">{today && <Badge variant="secondary">TODAY</Badge>}{enrollment && <Badge variant={enrollment.status === "active" ? "success" : "warning"}>{item.kind === "course" ? courseAccessLabel(enrollment.status) : statusLabel(enrollment.status)}</Badge>}</div>
+    {item.flyer_path ? <ProgramFlyer path={item.flyer_path} title={item.title} onOpen={()=>onOpen(item)}/> : item.kind !== "course" ? <button type="button" onClick={()=>onOpen(item)} className="rounded-xl bg-[var(--muted-light)] p-10 text-center text-sm text-[var(--muted)]" aria-label={`View program details: ${item.title}`}>Poster coming soon · View details</button> : null}
     <button type="button" onClick={()=>onOpen(item)} className="text-left text-lg font-bold leading-snug [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-navy)]">{item.title}</button>
     <div className="mt-auto grid grid-cols-3 gap-2 text-center">
       <div className="min-w-0 rounded-xl border border-[var(--card-border)] bg-[var(--muted-light)] px-2 py-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Date</p><p className="text-xs font-semibold [overflow-wrap:anywhere]">{offeringDates(item) ?? "To be announced"}</p></div>
       <div className="min-w-0 rounded-xl border border-[var(--card-border)] bg-[var(--muted-light)] px-2 py-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Time</p><p className="text-xs font-semibold">{programTimeLabel(item.program_time) ?? "To be confirmed"}</p>{item.program_end_time && <p className="mt-1 text-[11px]">to {programTimeLabel(item.program_end_time)}</p>}</div>
       <div className={`flex min-w-0 flex-col justify-center rounded-xl border px-2 py-3 ${item.mode === "online" ? "border-[var(--brand-navy-border)] bg-[var(--brand-navy-soft)] text-[var(--brand-navy)]" : item.mode === "offline" ? "border-green-200 bg-green-50 text-green-800" : "border-[var(--card-border)] bg-[var(--muted-light)]"}`}><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide">Mode</p><p className="text-xs font-bold [overflow-wrap:anywhere]">{modeLabel(item)}</p></div>
     </div>
-    {enrollment && <p className="text-xs text-[var(--muted)]">{statusLabel(enrollment.status)} · {feeLabel(enrollment.amount,item.currency)}</p>}
+    {enrollment && <p className="text-xs text-[var(--muted)]">{statusLabel(enrollment.status)} · {item.kind !== "course" && feeLabel(enrollment.amount,item.currency)}</p>}
   </Card>;
 }
 export function DashboardPrograms({ offerings, enrollments, date, manager, onOpen, sessions = false, includePast = false }: { offerings: Offering[]; enrollments: OfferingEnrollment[]; date: string; manager: boolean; onOpen: (item: Offering) => void; sessions?: boolean; includePast?: boolean }) {
