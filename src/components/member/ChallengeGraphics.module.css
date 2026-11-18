@@ -1,0 +1,288 @@
+/* Graphics for the challenge dashboard: the task ring, the completion burst
+   and the journey trail.
+
+   The colour rule from ChallengeRewards.module.css holds here too - gold goes
+   on DARK only. Measured against white, --brand-gold is 2.03:1; on
+   --brand-navy-deep it is 7.96:1. So the ring, which sits on the dark quest
+   panel, is gold; the trail, which sits on a white card, is navy. */
+
+/* ------------------------------------------------------------- task ring */
+
+.ringWrap {
+  position: relative;
+  width: clamp(148px, 42vw, 196px);
+  aspect-ratio: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.ring {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ring path {
+  fill: none;
+  stroke-width: 13;
+  stroke-linecap: round;
+}
+
+.unlit {
+  stroke: color-mix(in srgb, white 15%, transparent);
+}
+
+.lit {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand-gold) 55%, transparent));
+  transform-origin: 100px 100px;
+  animation: segment-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes segment-in {
+  from { opacity: 0; transform: scale(0.82); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.ringCore {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ringCore strong {
+  font-size: clamp(2.6rem, 9vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--brand-yellow);
+}
+
+.ringCore small {
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, white 70%, transparent);
+}
+
+/* ------------------------------------------------------------ the burst */
+
+.burst {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--brand-yellow);
+  animation: spark 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes spark {
+  from { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); }
+  to   { opacity: 0; transform: rotate(var(--a)) translateY(-104px) scale(0.3); }
+}
+
+/* ---------------------------------------------------------- journey trail */
+
+.trail {
+  position: relative;
+  width: 100%;
+  /* Room for the labels, which hang below the 124px drawing. */
+  padding-bottom: 3.75rem;
+}
+
+.trailArt {
+  display: block;
+  width: 100%;
+  height: 124px;
+}
+
+.trailArt path {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.trailBase {
+  stroke: var(--brand-navy-light);
+  stroke-dasharray: 2 12;
+}
+
+.trailWalked {
+  stroke: var(--brand-navy);
+  animation: draw 900ms ease-out both;
+}
+
+@keyframes draw {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.trailMarks {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 124px;
+}
+
+.markDone,
+.markTodo {
+  position: absolute;
+  /* The icon's centre lands on the path; the label hangs beneath it. */
+  transform: translate(-50%, -20px);
+  width: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3rem;
+}
+
+.markIcon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: transform 160ms ease;
+}
+
+.markDone .markIcon {
+  background: var(--brand-navy);
+  color: white;
+  box-shadow: 0 0 0 4px var(--card-bg), 0 4px 10px color-mix(in srgb, var(--brand-navy) 30%, transparent);
+}
+
+.markTodo .markIcon {
+  background: var(--brand-navy-light);
+  color: color-mix(in srgb, var(--brand-navy) 45%, transparent);
+  box-shadow: 0 0 0 4px var(--card-bg);
+}
+
+.markDone:hover .markIcon,
+.markTodo:hover .markIcon {
+  transform: translateY(-3px);
+}
+
+.markIcon > span {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--card-bg);
+}
+
+.markDone .markIcon > span {
+  background: var(--brand-gold);
+  color: var(--brand-navy-deep);
+}
+
+.markTodo .markIcon > span {
+  background: var(--muted-light, var(--brand-navy-light));
+  color: var(--muted);
+}
+
+.markDone strong,
+.markTodo strong {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--foreground);
+}
+
+.markTodo strong {
+  color: var(--muted);
+}
+
+.markDone small,
+.markTodo small {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.markDone small {
+  color: var(--brand-navy);
+}
+
+/* Keep the first and last labels inside the card rather than centred on a
+   dot that sits near the edge. */
+.trailMarks > div:first-child {
+  transform: translate(-32%, -20px);
+}
+
+.trailMarks > div:nth-last-child(2) {
+  transform: translate(-68%, -20px);
+}
+
+.walker {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--brand-gold);
+  box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 6px color-mix(in srgb, var(--brand-gold) 35%, transparent);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 6px color-mix(in srgb, var(--brand-gold) 35%, transparent); }
+  50%      { box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 11px color-mix(in srgb, var(--brand-gold) 0%, transparent); }
+}
+
+@media (max-width: 560px) {
+  .markDone,
+  .markTodo {
+    width: 4.4rem;
+  }
+  .markDone strong,
+  .markTodo strong {
+    font-size: 0.66rem;
+  }
+  .markDone small,
+  .markTodo small {
+    font-size: 0.58rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lit,
+  .trailWalked,
+  .walker,
+  .burst i {
+    animation: none;
+  }
+  .markDone .markIcon,
+  .markTodo .markIcon {
+    transition: none;
+  }
+  .markDone:hover .markIcon,
+  .markTodo:hover .markIcon {
+    transform: none;
+  }
+  .burst {
+    display: none;
+  }
+}

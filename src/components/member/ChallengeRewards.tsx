@@ -7,6 +7,7 @@ import { useEnrollmentRefresh } from '@/lib/enrollment-refresh';
 import { getChallengeRewards } from '@/lib/data/challenge-rewards';
 import { challengeCalendar, challengeStreak } from '@/lib/challenge-calendar';
 import { growthProgress } from '@/lib/gamification';
+import { TaskRing, JourneyTrail, CountUp } from './ChallengeGraphics';
 import styles from './ChallengeRewards.module.css';
 
 const date = (value: string) => new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
@@ -58,20 +59,15 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
               <span><strong>{growth.xp.toLocaleString()}</strong> XP</span>
               <span>{growth.nextXP} XP to level {growth.level + 1}</span>
             </div>
-            <div
-              className={styles.xpBar}
-              role="progressbar"
-              aria-label={`Level ${growth.level} progress`}
-              aria-valuemin={0}
-              aria-valuemax={250}
-              aria-valuenow={growth.levelXP}
-            ><span style={{ width: `${Math.round(growth.levelXP / 250 * 100)}%` }} /></div>
             <a href="#my-learning" className={styles.goldCta}>See your programs<ArrowRight size={15} /></a>
           </div>
-          <div className={styles.prize} aria-label="3,000 point completion reward">
-            <span className={styles.trophy}><Trophy size={38} strokeWidth={1.5} /><Sparkles size={14} /></span>
-            <strong>3,000</strong>
-            <span>POINT REWARD</span>
+          <div className={styles.questFigure}>
+            <TaskRing completed={0} />
+            <div className={styles.prize} aria-label="3,000 point completion reward">
+              <span className={styles.trophy}><Trophy size={26} strokeWidth={1.6} /><Sparkles size={12} /></span>
+              <strong>3,000</strong>
+              <span>POINT REWARD</span>
+            </div>
           </div>
         </div>
       </section>
@@ -101,14 +97,8 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
       </section>
 
       <section className={styles.milestoneCard} aria-label="Challenge milestones">
-        <h3><Target size={15} />Milestones</h3>
-        <div className={styles.milestones}>
-          {MILESTONES.map(({ at, label, Icon }) => <div key={at} className={styles.locked} title={`${label}: ${at} completed ${at === 1 ? 'task' : 'tasks'}`}>
-            <span className={styles.medal}><Icon size={21} /><span><LockKeyhole size={9} /></span></span>
-            <strong>{label}</strong>
-            <small>{at} {at === 1 ? 'task' : 'tasks'}</small>
-          </div>)}
-        </div>
+        <h3><Target size={15} />Your journey</h3>
+        <JourneyTrail completed={0} marks={MILESTONES} />
       </section>
 
       <p className={styles.footnote}>
@@ -134,7 +124,6 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
       completed_at,
     }));
     const growth = growthProgress(profilePercent, records);
-    const levelPercent = Math.round(growth.levelXP / 250 * 100);
     const earnedBadges = growth.badges.filter(badge => badge.earned).length;
 
     return <div className={styles.group} key={reward.enrollment_id}>
@@ -160,27 +149,20 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
               <span><strong>{growth.xp.toLocaleString()}</strong> XP</span>
               <span>{growth.nextXP} XP to level {growth.level + 1}</span>
             </div>
-            <div
-              className={styles.xpBar}
-              role="progressbar"
-              aria-label={`Level ${growth.level} progress`}
-              aria-valuemin={0}
-              aria-valuemax={250}
-              aria-valuenow={growth.levelXP}
-              aria-valuetext={`${growth.levelXP} of 250 XP towards level ${growth.level + 1}`}
-            >
-              <span style={{ width: `${levelPercent}%` }} />
-            </div>
-
             <a href="#my-learning" className={styles.goldCta}>
               {done ? 'Review your tasks' : 'Continue your challenge'}<ArrowRight size={15} />
             </a>
           </div>
 
-          <div className={styles.prize} aria-label={`${completionReward} point completion reward`}>
-            <span className={styles.trophy}><Trophy size={38} strokeWidth={1.5} /><Sparkles size={14} /></span>
-            <strong>{completionReward}</strong>
-            <span>POINT REWARD</span>
+          {/* The hero figure. Thirty countable pips, so the goal reads at a
+              glance; the section below keeps the progressbar semantics. */}
+          <div className={styles.questFigure}>
+            <TaskRing completed={reward.completed_tasks} />
+            <div className={styles.prize} aria-label={`${completionReward} point completion reward`}>
+              <span className={styles.trophy}><Trophy size={26} strokeWidth={1.6} /><Sparkles size={12} /></span>
+              <strong>{completionReward}</strong>
+              <span>POINT REWARD</span>
+            </div>
           </div>
         </div>
 
@@ -191,41 +173,39 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
       <div className={styles.tiles}>
         <div>
           <span className={styles.tileIcon}><Check size={17} /></span>
-          <strong>{reward.completed_tasks}<small>/30</small></strong>
+          <strong><CountUp value={reward.completed_tasks} /><small>/30</small></strong>
           <span>Tasks done</span>
         </div>
         <div>
           <span className={styles.tileIcon}><Coins size={17} /></span>
-          <strong>{reward.earned_points.toLocaleString()}</strong>
+          <strong><CountUp value={reward.earned_points} /></strong>
           <span>Points earned</span>
         </div>
         <div>
           <span className={styles.tileIcon}><Trophy size={17} /></span>
-          <strong>{reward.available_points.toLocaleString()}</strong>
+          <strong><CountUp value={reward.available_points} /></strong>
           <span>Redeemable now</span>
         </div>
         <div>
           <span className={styles.tileIcon}><Flame size={17} /></span>
-          <strong>{streak.current}</strong>
+          <strong><CountUp value={streak.current} /></strong>
           <span>Day streak</span>
         </div>
       </div>
 
-      <div className={styles.meterWrap}>
+      {/* The ring is decorative, so the measurable progress lives here. */}
+      <div
+        className={styles.meterWrap}
+        role="progressbar"
+        aria-label="Thirty-task challenge progress"
+        aria-valuemin={0}
+        aria-valuemax={30}
+        aria-valuenow={reward.completed_tasks}
+        aria-valuetext={`${reward.completed_tasks} of 30 tasks completed`}
+      >
         <div className={styles.meterLabel}>
           <span>Challenge progress</span>
           <strong>{percent}% complete</strong>
-        </div>
-        <div
-          className={styles.meter}
-          role="progressbar"
-          aria-label="Thirty-task challenge progress"
-          aria-valuemin={0}
-          aria-valuemax={30}
-          aria-valuenow={reward.completed_tasks}
-          aria-valuetext={`${reward.completed_tasks} of 30 tasks completed`}
-        >
-          <span style={{ width: `${percent}%` }} />
         </div>
         <p className={styles.rule}>{done
           ? reward.on_time
@@ -256,20 +236,8 @@ export function ChallengeRewards({ profilePercent = 0 }: { profilePercent?: numb
 
       {/* ---- milestone rail ---- */}
       <section className={styles.milestoneCard} aria-label="Challenge milestones">
-        <h3><Target size={15} />Milestones</h3>
-        <div className={styles.milestones}>
-          {MILESTONES.map(({ at, label, Icon }) => {
-            const unlocked = reward.completed_tasks >= at;
-            return <div key={at} className={unlocked ? styles.unlocked : styles.locked} title={`${label}: ${at} completed ${at === 1 ? 'task' : 'tasks'}`}>
-              <span className={styles.medal}>
-                <Icon size={21} />
-                <span>{unlocked ? <Check size={10} /> : <LockKeyhole size={9} />}</span>
-              </span>
-              <strong>{label}</strong>
-              <small>{unlocked ? 'Unlocked' : `${at} ${at === 1 ? 'task' : 'tasks'}`}</small>
-            </div>;
-          })}
-        </div>
+        <h3><Target size={15} />Your journey</h3>
+        <JourneyTrail completed={reward.completed_tasks} marks={MILESTONES} />
       </section>
 
       {/* ---- streak ---- */}

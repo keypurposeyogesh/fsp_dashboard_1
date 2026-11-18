@@ -100,10 +100,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 22px;
 }
 
-.questCopy { min-width: 0; flex: 1; }
+.questCopy { min-width: 0; flex: 1 1 15rem; }
+
+/* Ring above, reward chip below - one figure column, so the panel has a
+   single focal point instead of competing bars. */
+.questFigure {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+}
 
 .kicker {
   font-size: 9px;
@@ -154,22 +165,6 @@
   letter-spacing: -.5px;
 }
 
-.xpBar {
-  height: 10px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, .16);
-  overflow: hidden;
-}
-
-.xpBar > span {
-  display: block;
-  height: 100%;
-  border-radius: 20px;
-  background: linear-gradient(90deg, var(--brand-gold), var(--brand-yellow));
-  box-shadow: 0 0 12px color-mix(in srgb, var(--brand-yellow) 55%, transparent);
-  transition: width .5s cubic-bezier(.25, .8, .3, 1);
-}
-
 .goldCta {
   display: inline-flex;
   align-items: center;
@@ -198,39 +193,42 @@
 .prize {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  min-width: 130px;
+  gap: 9px;
+  padding: 6px 15px 6px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, white 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, transparent);
 }
 
 .trophy {
   position: relative;
   display: grid;
   place-items: center;
-  width: 84px;
-  height: 84px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   color: var(--brand-gold-ink);
   background: radial-gradient(circle at 32% 26%, var(--brand-yellow-light), var(--brand-gold-border) 50%, var(--brand-gold));
-  border: 5px double var(--brand-yellow-light);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+  border: 3px double var(--brand-yellow-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
   transform: rotate(-8deg);
 }
 
 .trophy > svg:last-child {
   position: absolute;
-  top: 6px;
-  right: 9px;
+  top: 1px;
+  right: 3px;
   color: var(--brand-yellow-light);
   transform: rotate(8deg);
 }
 
 .prize > strong {
-  font-size: 27px;
+  font-size: 19px;
   font-weight: 750;
   letter-spacing: -.7px;
   color: var(--brand-yellow);
-  margin-top: 13px;
+  margin-top: 0;
 }
 
 .prize > span {
@@ -238,7 +236,7 @@
   letter-spacing: 1.8px;
   font-weight: 750;
   color: var(--brand-gold-border);
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .questDates {
@@ -321,21 +319,6 @@
 }
 
 .meterLabel strong { font-weight: 700; color: var(--brand-navy); }
-
-.meter {
-  height: 11px;
-  border-radius: 20px;
-  background: var(--brand-navy-light);
-  overflow: hidden;
-}
-
-.meter > span {
-  display: block;
-  height: 100%;
-  border-radius: 20px;
-  background: linear-gradient(90deg, var(--brand-navy), var(--brand-navy-bright));
-  transition: width .5s cubic-bezier(.25, .8, .3, 1);
-}
 
 .rule { font-size: 11px; line-height: 1.7; color: var(--muted); margin-top: 11px; }
 
@@ -442,80 +425,6 @@
 
 .milestoneCard { padding: 20px; }
 
-.milestones {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.milestones:before {
-  content: '';
-  position: absolute;
-  height: 3px;
-  border-radius: 3px;
-  top: 24px;
-  left: 13%;
-  right: 13%;
-  background: var(--card-border);
-}
-
-.milestones > div {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  text-align: center;
-  gap: 5px;
-}
-
-.medal {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 3px solid var(--card-bg);
-  margin-bottom: 5px;
-  transition: transform .18s ease;
-}
-
-.milestones > div:hover .medal { transform: scale(1.07); }
-
-.medal > span {
-  position: absolute;
-  bottom: -3px;
-  right: -4px;
-  width: 17px;
-  height: 17px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 2px solid var(--card-bg);
-}
-
-.locked .medal {
-  background: var(--muted-light);
-  color: var(--muted);
-  box-shadow: 0 0 0 1px var(--card-border);
-}
-
-.locked .medal > span { background: var(--muted-border); color: var(--muted); }
-
-.unlocked .medal {
-  background: linear-gradient(135deg, var(--brand-yellow), var(--brand-gold));
-  color: var(--brand-navy-deep);
-  box-shadow: 0 0 0 1px var(--brand-gold-border), 0 4px 12px color-mix(in srgb, var(--brand-gold) 32%, transparent);
-}
-
-.unlocked .medal > span { background: var(--success); color: #fff; }
-
-.milestones strong { font-size: 10px; line-height: 1.4; color: var(--muted); font-weight: 650; }
-.unlocked strong { color: var(--brand-navy); }
-.milestones small { font-size: 9px; color: var(--muted); }
-.unlocked small { color: var(--success); font-weight: 700; }
-
 /* ============ streak ============ */
 
 .streakCard {
@@ -557,14 +466,14 @@
 .streakSummary strong > span { font-size: 13px; font-weight: 500; color: var(--muted); }
 .streakSummary p { font-size: 10px; color: var(--muted); margin-top: 3px; }
 
-.streakWeek { display: flex; gap: 8px; }
+.streakWeek { display: flex; gap: 6px; }
 .streakWeek > div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.streakWeek > div > span:first-child { font-size: 8px; color: var(--muted); }
+.streakWeek > div > span:first-child { font-size: 7px; color: var(--muted); }
 
 .streakDone,
 .streakEmpty {
-  height: 27px;
-  width: 27px;
+  height: 22px;
+  width: 22px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -732,38 +641,25 @@
   .quest { padding: 18px 17px 15px; }
   .questBody { gap: 12px; }
   .questCopy h2 { font-size: 21px; }
-  .prize { min-width: 95px; }
-  .trophy { width: 66px; height: 66px; }
-  .prize > strong { font-size: 23px; }
-  .prize > span { font-size: 7px; }
   .badges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .badgeMedal { width: 48px; height: 48px; }
   .milestoneCard, .badgeCard { padding: 16px; }
-  .milestones { gap: 4px; }
-  .milestones strong { font-size: 9px; }
-  .milestones small { font-size: 8px; }
-  .medal { width: 44px; height: 44px; }
-  .milestones:before { top: 21px; }
   .calendar { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
   .calendarBody { padding: 15px; }
   .calendarDetails > summary { padding: 14px 15px; gap: 10px; }
-  .intro { align-items: flex-start; }
 }
 
 @media (max-width: 430px) {
-  .questBody { flex-direction: column; align-items: flex-start; }
-  .prize { flex-direction: row; gap: 11px; align-items: center; min-width: 0; }
-  .prize > strong { margin-top: 0; }
-  .trophy { width: 54px; height: 54px; }
-  .trophy > svg:first-child { width: 26px; height: 26px; }
+  .questBody { justify-content: center; }
+  .prize > span { font-size: 7px; }
   .streakCard { padding: 14px; gap: 12px; }
   .streakWeek { gap: 5px; }
   .streakDone, .streakEmpty { width: 24px; height: 24px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .xpBar > span, .meter > span, .goldCta, .tiles > div,
-  .badgeEarned, .badgeLocked, .medal, .streakDone, .streakEmpty, .day { transition: none; }
+  .goldCta, .tiles > div,
+  .badgeEarned, .badgeLocked, .streakDone, .streakEmpty, .day { transition: none; }
   .goldCta:hover, .tiles > div:hover, .badgeEarned:hover, .badgeLocked:hover { transform: none; }
-  .milestones > div:hover .medal, .day:hover { transform: none; }
+  .day:hover { transform: none; }
 }
